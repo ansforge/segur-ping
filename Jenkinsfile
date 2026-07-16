@@ -13,7 +13,9 @@
 // branch workspace. We clone once, then commit/push each run.
 
 pipeline {
-  agent { label 'bookormjdk17persistent' }
+  // No global agent: the agent is acquired inside a bounded stage below so we can
+  // put a timeout on the *wait* for it (see the 'Run on agent' stage).
+  agent none
 
   triggers { cron('* * * * *') }
 
@@ -21,7 +23,7 @@ pipeline {
     disableConcurrentBuilds()          // skip a tick rather than overlap runs
     skipDefaultCheckout(true)          // never let checkout wipe uncommitted appended data
     buildDiscarder(logRotator(numToKeepStr: '5'))
-    timeout(time: 5, unit: 'MINUTES')
+    timeout(time: 5, unit: 'MINUTES')  // overall cap once we're running on the agent
   }
 
   environment {
@@ -32,50 +34,63 @@ pipeline {
   }
 
   stages {
-    stage('Ensure repo') {
-      steps {
-        script {
-          // First build on this agent: populate the persistent workspace using the
-          // multibranch SCM config (App credentials). Subsequent builds reuse it so
-          // the in-progress daily JSON survives between runs.
-          if (!fileExists('.git')) {
-            checkout scm
+    // Kill the build if no 'bookormjdk17persistent' executor becomes available
+    // within 3 minutes. A stage-level timeout combined with a stage-level agent
+    // counts the time spent waiting to allocate that agent, so an offline/stuck
+    // agent aborts the run instead of letting per-minute builds queue up. All the
+    // real work runs as nested stages, which share this stage's agent + workspace
+    // (required so the in-progress daily JSON survives between them).
+    stage('Run on agent') {
+      agent { label 'bookormjdk17persistent' }
+      options { timeout(time: 3, unit: 'MINUTES') }
+
+      stages {
+        stage('Ensure repo') {
+          steps {
+            script {
+              // First build on this agent: populate the persistent workspace using the
+              // multibranch SCM config (App credentials). Subsequent builds reuse it so
+              // the in-progress daily JSON survives between runs.
+              if (!fileExists('.git')) {
+                checkout scm
+              }
+            }
+            sh '''
+              set -e
+              git checkout -B "$BRANCH"
+              git config user.email "michael.faurel@esante.gouv.fr"
+              git config user.name  "segur-ping bot"
+              node --version
+            '''
           }
         }
-        sh '''
-          set -e
-          git checkout -B "$BRANCH"
-          git config user.email "michael.faurel@esante.gouv.fr"
-          git config user.name  "segur-ping bot"
-          node --version
-        '''
-      }
-    }
 
-    stage('Collect') {
-      steps {
-        sh 'node scripts/collect.js'
-      }
-    }
+        stage('Collect') {
+          steps {
+            sh 'node scripts/collect.js'
+          }
+        }
 
-    // Commit + push EVERY minute so measurements land in git in near real time.
-    // These commits only touch docs/data/**, which the Pages workflow ignores, so
-    // they do NOT trigger a Pages deploy (that runs on a 2h schedule instead).
-    stage('Commit & push') {
-      steps {
-        withCredentials([gitUsernamePassword(credentialsId: env.GIT_CRED_ID)]) {
-          sh '''
-            set -e
-            node scripts/build-site.js
-            git add docs/data
-            if git diff --cached --quiet; then
-              echo "No data changes this run"
-              exit 0
-            fi
-            git commit -m "data: $(date -Iseconds)"
-            git pull --rebase origin "$BRANCH"
-            git push origin HEAD:"$BRANCH"
-          '''
+        // Commit + push EVERY minute so measurements land in git in near real time.
+        // These commits only touch docs/data/**, which the Pages workflow ignores, so
+        // they do NOT trigger a Pages deploy (that runs on a 2h schedule instead).
+        stage('Commit & push') {
+          steps {
+            withCredentials([gitUsernamePassword(credentialsId: env.GIT_CRED_ID)]) {
+              sh '''
+                set -e
+                node scripts/build-site.js
+                git add docs/data
+                if git diff --cached --quiet; then
+                  echo "No data changes this run"
+                  exit 0
+                fi
+                git commit -m "data: $(date -Iseconds)"
+                git pull --rebase origin "$BRANCH"
+                git push origin HEAD:"$BRANCH"
+              '''
+            }
+          }
         }
       }
     }
