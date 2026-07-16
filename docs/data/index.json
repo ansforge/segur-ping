@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-16T12:26:13.421Z",
+  "generatedAt": "2026-07-16T12:27:13.912Z",
   "timezone": "Europe/Paris",
   "days": [
     "2026-07-16"
@@ -9,13 +9,13 @@
       "ip": "208.6.222.222",
       "label": "OpenDNS",
       "last24h": {
-        "samples": 9,
+        "samples": 10,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
         "loss_pct": 100,
         "uptime_pct": 0,
-        "lastSeen": "2026-07-16T14:26:13+02:00",
+        "lastSeen": "2026-07-16T14:27:13+02:00",
         "status": "down"
       }
     },
@@ -23,13 +23,13 @@
       "ip": "1.0.0.1",
       "label": "Cloudflare DNS 2",
       "last24h": {
-        "samples": 9,
+        "samples": 10,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
         "loss_pct": 100,
         "uptime_pct": 0,
-        "lastSeen": "2026-07-16T14:26:13+02:00",
+        "lastSeen": "2026-07-16T14:27:13+02:00",
         "status": "down"
       }
     },
@@ -37,13 +37,13 @@
       "ip": "8.8.4.4",
       "label": "Google DNS 2",
       "last24h": {
-        "samples": 9,
+        "samples": 10,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
         "loss_pct": 100,
         "uptime_pct": 0,
-        "lastSeen": "2026-07-16T14:26:13+02:00",
+        "lastSeen": "2026-07-16T14:27:13+02:00",
         "status": "down"
       }
     },
@@ -51,13 +51,13 @@
       "ip": "8.8.8.8",
       "label": "Google DNS",
       "last24h": {
-        "samples": 9,
+        "samples": 10,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
         "loss_pct": 100,
         "uptime_pct": 0,
-        "lastSeen": "2026-07-16T14:26:13+02:00",
+        "lastSeen": "2026-07-16T14:27:13+02:00",
         "status": "down"
       }
     },
@@ -65,13 +65,13 @@
       "ip": "1.1.1.1",
       "label": "Cloudflare DNS",
       "last24h": {
-        "samples": 9,
+        "samples": 10,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
         "loss_pct": 100,
         "uptime_pct": 0,
-        "lastSeen": "2026-07-16T14:26:13+02:00",
+        "lastSeen": "2026-07-16T14:27:13+02:00",
         "status": "down"
       }
     }
