@@ -1,28 +1,24 @@
-// Single pipeline triggered every minute.
+// Single pipeline triggered every minute, running on a labeled ANS agent
+// (bookwormjdk17 — has git + Node 18). No Docker: the ping-segur agent has no
+// docker binary, so we run the Node scripts directly on the agent.
+//
 //  - Every minute: ping all targets and append to docs/data/<day>.json (no git).
 //  - Every 2h (or when PUBLISH_NOW=true): rebuild the site manifest, commit,
-//    and push to GitHub so GitHub Pages updates.
+//    and push to main so GitHub Pages (Actions workflow) redeploys.
 //
-// Requirements on the Jenkins side (see README):
-//  - Docker available on the agent; image built once: `docker build -t segur-ping:latest .`
-//  - Credential id `github-segur-ping` (GitHub username + PAT with repo push).
-//  - Pipeline-from-SCM with "Lightweight checkout" enabled so fetching this
-//    Jenkinsfile does NOT wipe the workspace (uncommitted data must survive).
+// Data durability: skipDefaultCheckout(true) means the per-minute build never
+// re-checks-out and thus never wipes the uncommitted appended data in the
+// persistent branch workspace. We clone once, then only commit/push at publish.
 
 pipeline {
-  agent {
-    docker {
-      image 'segur-ping:latest'
-      args '--cap-add=NET_RAW -u root:root'   // ICMP needs NET_RAW; root avoids uid mismatches
-    }
-  }
+  agent { label 'bookwormjdk17' }
 
   triggers { cron('* * * * *') }
 
   options {
     disableConcurrentBuilds()          // skip a tick rather than overlap runs
     skipDefaultCheckout(true)          // never let checkout wipe uncommitted appended data
-    buildDiscarder(logRotator(numToKeepStr: '500'))
+    buildDiscarder(logRotator(numToKeepStr: '200'))
     timeout(time: 5, unit: 'MINUTES')
   }
 
@@ -31,26 +27,30 @@ pipeline {
   }
 
   environment {
-    BRANCH = 'main'
+    BRANCH      = 'main'
+    // Reuse the multibranch GitHub App credential (the one branch indexing uses).
+    // Adjust the id here if it differs from what checkout scm is configured with.
+    GIT_CRED_ID = 'ans-forge'
   }
 
   stages {
     stage('Ensure repo') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'github-segur-ping',
-                          usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-          sh '''
-            set -e
-            git config --global --add safe.directory "$PWD"
-            AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/ansforge/segur-ping.git"
-            if [ ! -d .git ]; then
-              git clone "$AUTH_URL" .
-            fi
-            git remote set-url origin "$AUTH_URL"
-            git config user.email "michael.faurel@esante.gouv.fr"
-            git config user.name "segur-ping bot"
-          '''
+        script {
+          // First build on this agent: populate the persistent workspace using the
+          // multibranch SCM config (App credentials). Subsequent builds reuse it so
+          // the in-progress daily JSON survives between runs.
+          if (!fileExists('.git')) {
+            checkout scm
+          }
         }
+        sh '''
+          set -e
+          git checkout -B "$BRANCH"
+          git config user.email "michael.faurel@esante.gouv.fr"
+          git config user.name  "segur-ping bot"
+          node --version
+        '''
       }
     }
 
@@ -67,18 +67,20 @@ pipeline {
         }
       }
       steps {
-        sh '''
-          set -e
-          node scripts/build-site.js
-          git add docs/data
-          if git diff --cached --quiet; then
-            echo "No data changes to publish"
-            exit 0
-          fi
-          git commit -m "data: publish $(date -Iseconds)"
-          git pull --rebase origin "$BRANCH"
-          git push origin HEAD:"$BRANCH"
-        '''
+        withCredentials([gitUsernamePassword(credentialsId: env.GIT_CRED_ID)]) {
+          sh '''
+            set -e
+            node scripts/build-site.js
+            git add docs/data
+            if git diff --cached --quiet; then
+              echo "No data changes to publish"
+              exit 0
+            fi
+            git commit -m "data: publish $(date -Iseconds)"
+            git pull --rebase origin "$BRANCH"
+            git push origin HEAD:"$BRANCH"
+          '''
+        }
       }
     }
   }

@@ -32,9 +32,12 @@ scripts/collect.js   ping all targets, append to today's daily JSON
 scripts/build-site.js  rebuild docs/data/index.json (manifest + summaries)
 scripts/is-publish-tick.js  exit 0 on a 2h publish boundary
 docs/                GitHub Pages root (index.html, app.js, vendor/uPlot.*)
-Dockerfile           node + iputils(ping) + git + TZ=Europe/Paris
-Jenkinsfile          single minute-cron job, conditional publish
+Jenkinsfile          single minute-cron job on the bookwormjdk17 agent
+Dockerfile           OPTIONAL — local-dev container only; NOT used by Jenkins
 ```
+
+The Jenkins agent (`bookwormjdk17`) already has **git + Node 18 + ping**, so the
+pipeline runs the Node scripts directly on the agent — no Docker involved.
 
 ## Configure
 
@@ -64,11 +67,7 @@ cd docs && python -m http.server 8080   # open http://localhost:8080
 
 ## One-time Jenkins / GitHub setup
 
-1. **Build the agent image once** (rebuild only when `Dockerfile` changes):
-   ```bash
-   docker build -t segur-ping:latest .
-   ```
-2. **GitHub Pages**: the workflow `.github/workflows/pages.yml` auto-enables
+1. **GitHub Pages**: the workflow `.github/workflows/pages.yml` auto-enables
    Pages (Actions source) on its first run via `configure-pages` with
    `enablement: true`, then publishes `docs/` on every push touching `docs/**`
    (each 2h Jenkins publish) or on manual *Run workflow*.
@@ -77,18 +76,22 @@ cd docs && python -m http.server 8080   # open http://localhost:8080
    - This is the only Actions workflow — the per-minute pinging stays on Jenkins,
      so it uses no meaningful Actions quota (~12 short runs/day; unlimited for
      public repos).
-3. **Jenkins credential** `github-segur-ping`: a GitHub Personal Access Token
-   (or App token) with `repo` push rights, stored as *username + password*
-   (token = password).
-4. **Jenkins job**: *Pipeline → Pipeline script from SCM → Git*
-   `https://github.com/ansforge/segur-ping`, script path `Jenkinsfile`.
-   - Enable **Lightweight checkout** (default) — so fetching the Jenkinsfile
-     does not wipe the workspace where in-progress data is buffered.
-   - Ensure Docker is available and `--cap-add=NET_RAW` is allowed on the agent.
+2. **Jenkins job**: a **multibranch Pipeline** on `ansforge/segur-ping`, script
+   path `Jenkinsfile` (already set up as `ANS/Transverse/Forge/ping-segur`).
+   - The pipeline pins `agent { label 'bookwormjdk17' }` (git + Node 18 + ping).
+   - It reuses the multibranch **GitHub App credential** for the publish push.
+     The id is set at the top of the `Jenkinsfile` as `GIT_CRED_ID = 'ans-forge'`
+     — change it there if branch indexing uses a different credential id.
+   - No Docker and no extra secret required.
 
 The `cron('* * * * *')` trigger inside the Jenkinsfile drives it from there.
 Trigger a build manually with **PUBLISH_NOW = true** to force an immediate
 publish.
+
+> **ICMP note:** the scripts use the agent's `ping` binary. Debian bookworm
+> normally allows unprivileged ping (`net.ipv4.ping_group_range`). If every
+> target reports `down` with 100% loss, the agent is blocking ICMP for the
+> jenkins user — grant it or run ping via a wrapper.
 
 ## How it stays cheap & clean
 
@@ -96,7 +99,8 @@ publish.
 - Git commit + push only every 2 hours → ~12 commits/day.
 - Build logs auto-rotate (`buildDiscarder`); the **audit data is in git history**,
   untouched.
-- Chart library (uPlot) is **vendored** — no CDN, works offline, no CSP issues.
+- Chart library (uPlot) is **vendored** (works offline). The DSFR fonts/icons
+  load from a CDN and degrade gracefully to system fonts if unreachable.
 
 ## Notes / limits
 
