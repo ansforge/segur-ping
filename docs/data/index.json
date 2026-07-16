@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-16T13:31:03.157Z",
+  "generatedAt": "2026-07-16T13:44:02.874Z",
   "timezone": "Europe/Paris",
   "days": [
     "2026-07-16"
@@ -9,13 +9,13 @@
       "ip": "208.67.222.222",
       "label": "OpenDNS",
       "last24h": {
-        "samples": 24,
-        "avg_rtt": 6.3,
+        "samples": 27,
+        "avg_rtt": 6.26,
         "min_rtt": 5.49,
         "max_rtt": 11.76,
         "loss_pct": 0,
         "uptime_pct": 100,
-        "lastSeen": "2026-07-16T15:31:02+02:00",
+        "lastSeen": "2026-07-16T15:44:02+02:00",
         "status": "up"
       }
     },
@@ -23,13 +23,13 @@
       "ip": "1.0.0.1",
       "label": "Cloudflare DNS 2",
       "last24h": {
-        "samples": 36,
-        "avg_rtt": 6.43,
+        "samples": 39,
+        "avg_rtt": 6.47,
         "min_rtt": 5.74,
         "max_rtt": 11.66,
-        "loss_pct": 33.33,
-        "uptime_pct": 66.67,
-        "lastSeen": "2026-07-16T15:31:02+02:00",
+        "loss_pct": 30.77,
+        "uptime_pct": 69.23,
+        "lastSeen": "2026-07-16T15:44:02+02:00",
         "status": "up"
       }
     },
@@ -37,13 +37,13 @@
       "ip": "8.8.4.4",
       "label": "Google DNS 2",
       "last24h": {
-        "samples": 36,
-        "avg_rtt": 5.9,
-        "min_rtt": 5.18,
+        "samples": 39,
+        "avg_rtt": 5.89,
+        "min_rtt": 5.17,
         "max_rtt": 11.37,
-        "loss_pct": 33.33,
-        "uptime_pct": 66.67,
-        "lastSeen": "2026-07-16T15:31:02+02:00",
+        "loss_pct": 30.77,
+        "uptime_pct": 69.23,
+        "lastSeen": "2026-07-16T15:44:02+02:00",
         "status": "up"
       }
     },
@@ -51,13 +51,13 @@
       "ip": "8.8.8.8",
       "label": "Google DNS",
       "last24h": {
-        "samples": 36,
-        "avg_rtt": 5.75,
+        "samples": 39,
+        "avg_rtt": 5.74,
         "min_rtt": 4.96,
         "max_rtt": 11.55,
-        "loss_pct": 33.33,
-        "uptime_pct": 66.67,
-        "lastSeen": "2026-07-16T15:31:02+02:00",
+        "loss_pct": 30.77,
+        "uptime_pct": 69.23,
+        "lastSeen": "2026-07-16T15:44:02+02:00",
         "status": "up"
       }
     },
@@ -65,13 +65,13 @@
       "ip": "1.1.1.1",
       "label": "Cloudflare DNS",
       "last24h": {
-        "samples": 36,
-        "avg_rtt": 6.28,
+        "samples": 39,
+        "avg_rtt": 6.25,
         "min_rtt": 5.48,
         "max_rtt": 11.95,
-        "loss_pct": 33.33,
-        "uptime_pct": 66.67,
-        "lastSeen": "2026-07-16T15:31:02+02:00",
+        "loss_pct": 30.77,
+        "uptime_pct": 69.23,
+        "lastSeen": "2026-07-16T15:44:02+02:00",
         "status": "up"
       }
     }
