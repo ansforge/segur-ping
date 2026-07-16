@@ -1,29 +1,24 @@
 'use strict';
-// Frontend for the DSFR dashboard. Loads the manifest (data/index.json) plus the
-// daily JSON files needed for the selected range, then renders KPI cards, a uPlot
-// time-series and the summary table. Fully static — no framework/build step.
+// Frontend for the DSFR dashboard. Loads the manifest (data/index.json) which
+// lists every supervised URL with its latest curl result (HTTP status code),
+// then renders KPI cards and a status table filterable by domain.
+// Fully static — no framework/build step.
 
-// Les fichiers de données (data/*.json) sont poussés dans git chaque minute par
-// Jenkins, mais le site Pages n'est redéployé que toutes les 2 h : il sert donc un
-// snapshot figé, jusqu'à 2 h de retard. Pour que « Actualiser » affiche les mesures
-// quasi-live, on lit les JSON directement depuis le contenu brut de git (dernier
-// commit, cache CDN ~5 min, CORS *) plutôt que depuis le snapshot Pages. Les assets
-// statiques (HTML/CSS/JS) restent servis par Pages. Pour un dev local sur d'autres
-// données, remplacer DATA_BASE par './data'.
+// Le manifeste (data/index.json) est reconstruit chaque minute par Jenkins et
+// poussé dans git, mais le site Pages n'est redéployé que toutes les 2 h : il sert
+// donc un snapshot figé. Pour que « Actualiser » affiche les statuts quasi-live, on
+// lit le JSON directement depuis le contenu brut de git (dernier commit, cache CDN
+// ~5 min, CORS *) plutôt que depuis le snapshot Pages. Les assets statiques
+// (HTML/CSS/JS) restent servis par Pages. Pour un dev local sur d'autres données,
+// remplacer DATA_BASE par './data'.
 const DATA_BASE = 'https://raw.githubusercontent.com/ansforge/segur-ping/main/docs/data';
 function dataUrl(name) { return `${DATA_BASE}/${name}?t=${Date.now()}`; }
-
-// DSFR-flavoured categorical palette (one colour per target, in config order).
-const PALETTE = ['#000091', '#1D71B8', '#5A7700', '#965A00', '#D20050', '#6A6AF4', '#00A95F', '#8D533E'];
 
 // Latest run of the Pages deploy workflow (api.github.com sends CORS: *, but is
 // rate-limited to 60 req/h per IP for unauthenticated calls — fine on load/refresh).
 const CI_RUNS_URL = 'https://api.github.com/repos/ansforge/segur-ping/actions/workflows/pages.yml/runs?per_page=1';
 
-const RANGE_LABELS = { '24h': 'Dernières 24 heures', '7d': 'Derniers 7 jours', '30d': 'Derniers 30 jours' };
-const AXIS = { grid: '#EEEFF7', line: '#C1C5DC', text: '#898DA5', font: '12px Marianne, sans-serif' };
-
-const state = { index: null, range: '24h', charts: { rtt: null, loss: null }, dayCache: new Map() };
+const state = { index: null, domain: 'all' };
 
 const $ = (s) => document.querySelector(s);
 
@@ -36,84 +31,49 @@ async function fetchJSON(url) {
   return r.json();
 }
 
-async function loadDay(day) {
-  if (state.dayCache.has(day)) return state.dayCache.get(day);
-  let data = [];
-  try {
-    data = await fetchJSON(dataUrl(`${day}.json`));
-  } catch (err) {
-    console.warn('jour indisponible', day, err.message);
-    data = [];
-  }
-  state.dayCache.set(day, data);
-  return data;
-}
-
 // ---- formatting helpers (French) ----------------------------------------
 const nf = new Intl.NumberFormat('fr-FR');
-function fr(v, d = 1) {
-  if (v == null || Number.isNaN(v)) return '—';
-  return v.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
-}
-function withUnit(v, unit, d = 1) {
-  return v == null ? '—' : `${fr(v, d)} ${unit}`;
-}
 function relTime(iso) {
   if (!iso) return '—';
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return iso;
   const s = Math.max(0, Math.round((Date.now() - then) / 1000));
-  if (s < 60) return `il y a ${s} s`;
+  if (s < 60) return `il y a ${s} s`;
   const m = Math.round(s / 60);
-  if (m < 60) return `il y a ${m} min`;
+  if (m < 60) return `il y a ${m} min`;
   const h = Math.round(m / 60);
-  if (h < 24) return `il y a ${h} h`;
+  if (h < 24) return `il y a ${h} h`;
   return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
 }
-
-// ---- range / series -----------------------------------------------------
-function rangeDays() {
-  const all = state.index.days || [];
-  let n = 30;
-  if (state.range === '24h') n = 2;
-  else if (state.range === '7d') n = 7;
-  return all.slice(-n);
-}
-function windowMs() {
-  if (state.range === '24h') return 864e5;
-  if (state.range === '7d') return 6048e5;
-  return 2592e6;
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-async function buildSeries() {
-  const chunks = await Promise.all(rangeDays().map(loadDay));
-  const all = chunks.flat();
-  const cutoff = Date.now() - windowMs();
-  const within = all.filter((r) => new Date(r.ts).getTime() >= cutoff);
+// ---- classification ------------------------------------------------------
+// Bucket a URL record for KPI counts and row styling.
+//   ok        -> 2xx/3xx (curl ok, code < 400)
+//   http_err  -> 4xx/5xx
+//   down      -> no response (DNS/TLS/timeout, http_code null)
+//   unknown   -> never measured yet
+function bucketOf(u) {
+  if (u.http_code == null) return u.ts ? 'down' : 'unknown';
+  if (u.http_code >= 400) return 'http_err';
+  return 'ok';
+}
 
-  const targets = state.index.targets;
-  const perTs = new Map(); // ts(sec) -> { ip: record }
-  for (const rec of within) {
-    const x = Math.floor(new Date(rec.ts).getTime() / 1000);
-    if (!perTs.has(x)) perTs.set(x, {});
-    perTs.get(x)[rec.ip] = rec;
+function statusBadge(u) {
+  const c = u.http_code;
+  if (c == null) {
+    if (!u.ts) return '<span class="badge unknown">Inconnu</span>';
+    return '<span class="badge down"><span class="fr-icon-error-warning-line" style="font-size:14px;"></span>Injoignable</span>';
   }
-  const xs = [...perTs.keys()].sort((a, b) => a - b);
-  const seriesFor = (metric) => targets.map((t) => xs.map((x) => {
-    const rec = perTs.get(x)[t.ip];
-    const v = rec ? rec[metric] : null;
-    return v == null ? null : v;
-  }));
-  return {
-    count: within.length,
-    rtt: [xs, ...seriesFor('rtt_avg')],
-    loss: [xs, ...seriesFor('loss_pct')],
-  };
+  if (c >= 400) return `<span class="badge down"><span class="fr-icon-error-warning-line" style="font-size:14px;"></span>HTTP ${c}</span>`;
+  if (c >= 300) return `<span class="badge warn"><span class="fr-icon-arrow-right-line" style="font-size:14px;"></span>Redirection</span>`;
+  return '<span class="badge up"><span class="fr-icon-checkbox-circle-line" style="font-size:14px;"></span>En ligne</span>';
 }
 
-// ---- rendering ----------------------------------------------------------
-function targetColor(i) { return PALETTE[i % PALETTE.length]; }
-
+// ---- rendering -----------------------------------------------------------
 // Reads the last GitHub Actions deploy run and reflects it in the header badge.
 async function renderCiBadge() {
   const el = $('#ciBadge');
@@ -143,20 +103,16 @@ async function renderCiBadge() {
 }
 
 function renderKpis() {
-  const targets = state.index.targets || [];
-  const total = targets.length;
-  const upList = targets.filter((t) => (t.last24h || {}).status === 'up');
-  const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
-
-  const rtts = upList.map((t) => t.last24h.avg_rtt).filter((v) => v != null);
-  const uptimes = targets.map((t) => t.last24h && t.last24h.uptime_pct).filter((v) => v != null);
-  const losses = targets.map((t) => t.last24h && t.last24h.loss_pct).filter((v) => v != null);
+  const urls = state.index.urls || [];
+  const total = urls.length;
+  const counts = { ok: 0, http_err: 0, down: 0, unknown: 0 };
+  for (const u of urls) counts[bucketOf(u)]++;
 
   const kpis = [
-    { label: 'Cibles en ligne', value: `${upList.length}/${total}`, unit: '', note: `${total - upList.length} cible(s) hors ligne` },
-    { label: 'Latence moyenne', value: fr(avg(rtts), 1), unit: 'ms', note: 'sur les cibles en ligne' },
-    { label: 'Disponibilité globale', value: fr(avg(uptimes), 1), unit: '%', note: 'glissant sur 24 h' },
-    { label: 'Perte de paquets', value: fr(avg(losses), 1), unit: '%', note: 'moyenne des cibles' },
+    { label: 'URLs supervisées', value: nf.format(total), unit: '', note: `${state.index.domains ? state.index.domains.length : 0} domaine(s)` },
+    { label: 'En ligne', value: nf.format(counts.ok), unit: '', note: '2xx / 3xx' },
+    { label: 'Erreurs HTTP', value: nf.format(counts.http_err), unit: '', note: '4xx / 5xx' },
+    { label: 'Injoignables', value: nf.format(counts.down), unit: '', note: 'aucune réponse (DNS/TLS/timeout)' },
   ];
 
   $('#kpis').innerHTML = kpis.map((k) => `
@@ -170,101 +126,47 @@ function renderKpis() {
     </div>`).join('');
 }
 
-function statusBadge(status) {
-  if (status === 'up') return '<span class="badge up"><span class="fr-icon-checkbox-circle-line" style="font-size:14px;"></span>En ligne</span>';
-  if (status === 'down') return '<span class="badge down"><span class="fr-icon-error-warning-line" style="font-size:14px;"></span>Hors ligne</span>';
-  return '<span class="badge unknown">Inconnu</span>';
+function populateDomains() {
+  const sel = $('#domain');
+  const domains = state.index.domains || [];
+  const total = (state.index.urls || []).length;
+  const opts = [`<option value="all">Tous les domaines (${total})</option>`];
+  for (const d of domains) {
+    const n = (state.index.urls || []).filter((u) => u.domain === d).length;
+    opts.push(`<option value="${escapeHtml(d)}">${escapeHtml(d)} (${n})</option>`);
+  }
+  sel.innerHTML = opts.join('');
+  // Keep the current selection if it still exists, else fall back to "all".
+  if (state.domain !== 'all' && !domains.includes(state.domain)) state.domain = 'all';
+  sel.value = state.domain;
 }
 
 function renderTable() {
-  const rows = (state.index.targets || []).map((t, i) => {
-    const s = t.last24h || {};
-    let lossColor = '#50546D';
-    if (s.loss_pct >= 5) lossColor = '#B1001E';
-    else if (s.loss_pct >= 1) lossColor = '#965A00';
-    let availColor = '#B1001E';
-    if (s.uptime_pct >= 99) availColor = '#5A7700';
-    else if (s.uptime_pct >= 95) availColor = '#965A00';
-    const rowBg = s.status === 'down' ? 'background:#FEF1F6;' : '';
+  const all = state.index.urls || [];
+  const urls = state.domain === 'all' ? all : all.filter((u) => u.domain === state.domain);
+
+  const rows = urls.map((u) => {
+    const bucket = bucketOf(u);
+    const rowBg = (bucket === 'http_err' || bucket === 'down') ? 'background:#FEF1F6;' : '';
+    let codeColor = '#343852';
+    if (u.http_code == null) codeColor = '#6C7089';
+    else if (u.http_code >= 400) codeColor = '#B1001E';
+    else if (u.http_code >= 300) codeColor = '#965A00';
     return `
       <tr style="${rowBg}">
-        <td class="l mono" style="font-weight:500; color:#343852;">
-          <span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:${targetColor(i)}; margin-right:8px; vertical-align:middle;"></span>${t.label || ''}
-        </td>
-        <td class="l mono muted">${t.ip}</td>
-        <td class="l">${statusBadge(s.status)}</td>
-        <td class="r num">${withUnit(s.avg_rtt, 'ms')}</td>
-        <td class="r num muted">${withUnit(s.min_rtt, 'ms')}</td>
-        <td class="r num muted">${withUnit(s.max_rtt, 'ms')}</td>
-        <td class="r num" style="color:${lossColor};">${withUnit(s.loss_pct, '%')}</td>
-        <td class="r num" style="color:${availColor}; font-weight:500;">${withUnit(s.uptime_pct, '%')}</td>
-        <td class="r num muted">${s.samples == null ? '—' : nf.format(s.samples)}</td>
-        <td class="r muted">${relTime(s.lastSeen)}</td>
+        <td class="l" style="font-weight:500; color:#343852;">${escapeHtml(u.label)}</td>
+        <td class="l mono muted"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener" style="color:#1D71B8; text-decoration:none;">${escapeHtml(u.url)}</a></td>
+        <td class="l mono muted">${escapeHtml(u.domain)}</td>
+        <td class="l">${statusBadge(u)}</td>
+        <td class="r num" style="color:${codeColor}; font-weight:500;">${u.http_code == null ? '—' : u.http_code}</td>
+        <td class="r num muted">${u.ms == null ? '—' : `${nf.format(u.ms)} ms`}</td>
+        <td class="r muted">${relTime(u.ts)}</td>
       </tr>`;
   }).join('');
-  $('#rows').innerHTML = rows;
-}
 
-function renderLegend() {
-  $('#legend').innerHTML = (state.index.targets || []).map((t, i) => `
-    <span style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#50546D;">
-      <span style="display:inline-block; width:18px; height:3px; border-radius:2px; background:${targetColor(i)};"></span>${t.label || t.ip}
-    </span>`).join('');
-}
-
-function makeChart(el, data, metric, store) {
-  el.innerHTML = '';
-  const width = Math.max(el.clientWidth || 900, 320);
-  const isRtt = metric === 'rtt_avg';
-  const unit = isRtt ? 'ms' : '%';
-
-  const series = [{}].concat((state.index.targets || []).map((t, i) => ({
-    label: t.label || t.ip,
-    stroke: targetColor(i),
-    width: 2,
-    spanGaps: false,
-    points: { show: false },
-    value: (u, v) => (v == null ? '—' : `${fr(v, 1)} ${unit}`),
-  })));
-
-  const opts = {
-    width,
-    height: 320,
-    legend: { show: false },
-    scales: { x: { time: true } },
-    axes: [
-      { stroke: AXIS.text, font: AXIS.font, grid: { stroke: AXIS.grid, width: 1 }, ticks: { stroke: AXIS.grid } },
-      {
-        stroke: AXIS.text, font: AXIS.font, grid: { stroke: AXIS.grid, width: 1 }, ticks: { stroke: AXIS.grid },
-        label: isRtt ? 'RTT (ms)' : 'Perte (%)', labelFont: '12px Marianne, sans-serif', labelSize: 30,
-      },
-    ],
-    series,
-  };
-
-  if (state.charts[store]) { state.charts[store].destroy(); state.charts[store] = null; }
-  // eslint-disable-next-line new-cap
-  state.charts[store] = new uPlot(opts, data, el);
-}
-
-async function renderChart() {
-  $('#chartRangeLabelRtt').textContent = RANGE_LABELS[state.range];
-  $('#chartRangeLabelLoss').textContent = RANGE_LABELS[state.range];
-  const { rtt, loss, count } = await buildSeries();
-  makeChart($('#chartRtt'), rtt, 'rtt_avg', 'rtt');
-  makeChart($('#chartLoss'), loss, 'loss_pct', 'loss');
-  $('#chartfoot').textContent = `${nf.format(count)} mesures affichées.`;
-}
-
-function wireToggle(groupSel, key) {
-  document.querySelectorAll(`${groupSel} .seg`).forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll(`${groupSel} .seg`).forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      state[key] = btn.dataset[key];
-      renderChart();
-    });
-  });
+  $('#rows').innerHTML = rows || '<tr><td class="l muted" colspan="7" style="padding:20px 14px;">Aucune URL pour ce domaine.</td></tr>';
+  const label = state.domain === 'all' ? 'tous domaines' : state.domain;
+  $('#filterCount').textContent = `${nf.format(urls.length)} URL(s) · ${label}`;
 }
 
 async function main() {
@@ -272,7 +174,7 @@ async function main() {
   try {
     state.index = await fetchJSON(dataUrl('index.json'));
   } catch (err) {
-    $('#chartfoot').textContent = 'Aucune donnée disponible (data/index.json introuvable).';
+    $('#tablefoot').textContent = 'Aucune donnée disponible (data/index.json introuvable).';
     console.error(err);
     return;
   }
@@ -283,24 +185,22 @@ async function main() {
 
   try {
     renderKpis();
+    populateDomains();
     renderTable();
-    renderLegend();
-    await renderChart();
   } catch (err) {
-    $('#chartfoot').textContent = `Erreur de rendu : ${err.message}`;
+    $('#tablefoot').textContent = `Erreur de rendu : ${err.message}`;
     console.error(err);
   }
 }
 
 // ---- bootstrap ----------------------------------------------------------
-wireToggle('#range', 'range');
+$('#domain').addEventListener('change', (e) => { state.domain = e.target.value; renderTable(); });
 $('#refresh').addEventListener('click', async () => {
   const btn = $('#refresh');
   const prev = btn.innerHTML;
   btn.disabled = true;
   btn.style.opacity = '0.6';
   btn.innerHTML = '<span class="fr-icon-refresh-line" style="font-size:14px;"></span>Actualisation…';
-  state.dayCache.clear();
   try {
     await main();
   } finally {
@@ -309,8 +209,5 @@ $('#refresh').addEventListener('click', async () => {
     btn.innerHTML = prev;
   }
 });
-window.addEventListener('resize', () => { if (state.index) renderChart(); });
-const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
-darkMq.addEventListener('change', () => { if (state.index) renderChart(); });
 
 main();

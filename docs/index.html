@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>segur-ping — Supervision réseau</title>
+<title>segur-ping — Supervision HTTP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marianne:ital,wght@0,300;0,400;0,500;0,700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/[email protected]/dist/utility/icons/icons.min.css">
-<link rel="stylesheet" href="vendor/uPlot.min.css">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; }
@@ -18,10 +17,10 @@
   .container { max-width:1248px; margin:0 auto; padding:0 24px; }
   main { max-width:1248px; margin:0 auto; padding:32px 24px 80px; }
 
-  /* segmented toggles */
-  .seg-group { display:inline-flex; box-shadow:inset 0 0 0 1px #C1C5DC; border-radius:0 16px 16px 16px; overflow:hidden; }
-  .seg { font:inherit; font-weight:500; font-size:14px; border:0; padding:8px 16px; cursor:pointer; background:#FFFFFF; color:#50546D; }
-  .seg.active { background:#1D71B8; color:#FFFFFF; }
+  /* domain dropdown */
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:#6C7089; }
+  select.ans { font:inherit; font-weight:500; font-size:14px; color:#50546D; background:#FFFFFF; border:0; box-shadow:inset 0 0 0 1px #C1C5DC; border-radius:0 16px 16px 16px; padding:8px 40px 8px 14px; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%231D71B8' d='M6 8 0 2l1.4-1.4L6 5.2 10.6.6 12 2z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
 
   /* cards */
   .card { border-radius:0 24px 24px 24px; box-shadow:inset 0 0 0 1px #C1C5DC; background:#FFFFFF; }
@@ -44,10 +43,7 @@
   .badge.up { color:#5A7700; background:#E8F8B9; }
   .badge.down { color:#FFFFFF; background:#B1001E; }
   .badge.unknown { color:#50546D; background:#EEEFF7; }
-
-  /* uPlot restyle to DSFR */
-  .uplot .u-legend { font-size:13px; color:#50546D; }
-  .uplot .u-legend .u-marker { border-radius:2px; }
+  .badge.warn { color:#965A00; background:#FCE7C3; }
 </style>
 </head>
 <body>
@@ -88,38 +84,19 @@
   <main>
 
     <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px; margin-bottom:6px;">
-      <h1 style="font-size:32px; font-weight:700; line-height:1.2; color:#343852; margin:0;">Supervision réseau</h1>
+      <h1 style="font-size:32px; font-weight:700; line-height:1.2; color:#343852; margin:0;">Supervision HTTP</h1>
       <span id="generated" style="color:#6C7089; font-size:13px;"></span>
     </div>
-    <p style="color:#50546D; font-size:16px; margin:0 0 24px; max-width:760px;">Disponibilité et latence des services e-santé supervisés. Cette vue est destinée à un usage d'audit&nbsp;; les mesures brutes sont conservées dans <code style="font-family:var(--mono); font-size:0.9em; background:#F6F7FB; padding:2px 6px; border-radius:4px;">data/AAAA-MM-JJ.json</code>.</p>
+    <p style="color:#50546D; font-size:16px; margin:0 0 24px; max-width:760px;">Code de statut HTTP des URLs supervisées (curl à chaque relève). Cette vue est destinée à un usage d'audit&nbsp;; le dernier résultat de chaque URL est conservé dans <code style="font-family:var(--mono); font-size:0.9em; background:#F6F7FB; padding:2px 6px; border-radius:4px;">data/http/&lt;id&gt;.json</code>.</p>
 
     <div id="kpis" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:28px;"></div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:20px; align-items:center;">
-      <div class="seg-group" id="range">
-        <button class="seg active" data-range="24h">24&nbsp;h</button>
-        <button class="seg" data-range="7d">7&nbsp;j</button>
-        <button class="seg" data-range="30d">30&nbsp;j</button>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:20px; align-items:flex-end;">
+      <div class="field">
+        <label class="field-label" for="domain">Domaine</label>
+        <select id="domain" class="ans"></select>
       </div>
-    </div>
-
-    <div id="legend" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:20px;"></div>
-
-    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
-      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
-        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Latence aller-retour (RTT)</h2>
-        <span id="chartRangeLabelRtt" style="font-size:12px; color:#6C7089;"></span>
-      </div>
-      <div id="chartRtt"></div>
-    </div>
-
-    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
-      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
-        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Taux de perte de paquets</h2>
-        <span id="chartRangeLabelLoss" style="font-size:12px; color:#6C7089;"></span>
-      </div>
-      <div id="chartLoss"></div>
-      <div id="chartfoot" style="color:#6C7089; font-size:12px; margin-top:8px;"></div>
+      <span id="filterCount" style="font-size:13px; color:#6C7089; padding-bottom:9px;"></span>
     </div>
 
     <div class="card" style="overflow:hidden;">
@@ -127,28 +104,24 @@
         <table class="grid">
           <thead>
             <tr>
-              <th class="l">Cible</th>
-              <th class="l">IP</th>
+              <th class="l">Libellé</th>
+              <th class="l">URL</th>
+              <th class="l">Domaine</th>
               <th class="l">État</th>
-              <th class="r">RTT moy</th>
-              <th class="r">RTT min</th>
-              <th class="r">RTT max</th>
-              <th class="r">Perte&nbsp;%</th>
-              <th class="r">Dispo&nbsp;%</th>
-              <th class="r">Mesures</th>
+              <th class="r">Code</th>
+              <th class="r">Temps</th>
               <th class="r">Vu à</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
-      <div style="color:#6C7089; font-size:12px; padding:12px 14px; border-top:1px solid #EEEFF7;">Résumé glissant sur 24&nbsp;h. Le tableau présente les agrégats&nbsp;; les mesures brutes sont dans <code style="font-family:var(--mono);">data/AAAA-MM-JJ.json</code>.</div>
+      <div id="tablefoot" style="color:#6C7089; font-size:12px; padding:12px 14px; border-top:1px solid #EEEFF7;">Dernier code de statut HTTP par URL. Le détail brut de chaque URL est dans <code style="font-family:var(--mono);">data/http/&lt;id&gt;.json</code>.</div>
     </div>
 
   </main>
 </div>
 
-<script src="vendor/uPlot.iife.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

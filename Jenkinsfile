@@ -2,14 +2,15 @@
 // (bookwormjdk17 — has git + Node 18). No Docker: the ping-segur agent has no
 // docker binary, so we run the Node scripts directly on the agent.
 //
-//  - Every minute: ping all targets, append to docs/data/<day>.json, rebuild the
-//    manifest, then commit + push to main (measurements land in git in near
-//    real time). These commits touch only docs/data/**.
+//  - Every minute: curl all URLs in urls.json, write one docs/data/http/<id>.json
+//    per URL, rebuild the manifest (docs/data/index.json), then commit + push to
+//    main (statuses land in git in near real time). These commits touch only
+//    docs/data/**.
 //  - GitHub Pages is deployed by .github/workflows/pages.yml on a 2h schedule;
 //    it ignores docs/data/** pushes, so the per-minute commits don't redeploy it.
 //
 // Data durability: skipDefaultCheckout(true) means the per-minute build never
-// re-checks-out and thus never wipes uncommitted appended data in the persistent
+// re-checks-out and thus never wipes the docs/data working tree in the persistent
 // branch workspace. We clone once, then commit/push each run.
 
 pipeline {
@@ -67,7 +68,12 @@ pipeline {
 
         stage('Collect') {
           steps {
-            sh 'node scripts/collect.js'
+            // Curl every URL in urls.json and write one docs/data/http/<id>.json
+            // per URL (latest status snapshot, overwritten each run). At ~900 URLs
+            // this rewrites up to 900 files each minute — bounded in size, but the
+            // commit below then touches many files. curl honours the pod proxy +
+            // system CA store, which a bare Node fetch would not.
+            sh 'node scripts/collect-http.js'
           }
         }
 
