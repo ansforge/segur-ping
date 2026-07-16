@@ -1,76 +1,78 @@
 {
-  "generatedAt": "2026-07-16T11:39:01.211Z",
+  "generatedAt": "2026-07-16T12:19:18.133Z",
   "timezone": "Europe/Paris",
-  "days": [],
+  "days": [
+    "2026-07-16"
+  ],
   "targets": [
     {
-      "ip": "185.24.184.12",
-      "label": "Google DNS",
+      "ip": "208.6.222.222",
+      "label": "OpenDNS",
       "last24h": {
+        "samples": 1,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
-        "loss_pct": null,
-        "uptime_pct": null,
-        "samples": 0,
-        "lastSeen": null,
-        "status": "unknown"
+        "loss_pct": 100,
+        "uptime_pct": 0,
+        "lastSeen": "2026-07-16T14:19:17+02:00",
+        "status": "down"
       }
     },
     {
-      "ip": "193.51.208.44",
-      "label": "A DNS",
+      "ip": "1.0.0.1",
+      "label": "Cloudflare DNS 2",
       "last24h": {
+        "samples": 1,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
-        "loss_pct": null,
-        "uptime_pct": null,
-        "samples": 0,
-        "lastSeen": null,
-        "status": "unknown"
+        "loss_pct": 100,
+        "uptime_pct": 0,
+        "lastSeen": "2026-07-16T14:19:17+02:00",
+        "status": "down"
       }
     },
     {
-      "ip": "185.24.185.7",
-      "label": "B DNS",
+      "ip": "8.8.4.4",
+      "label": "Google DNS 2",
       "last24h": {
+        "samples": 1,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
-        "loss_pct": null,
-        "uptime_pct": null,
-        "samples": 0,
-        "lastSeen": null,
-        "status": "unknown"
+        "loss_pct": 100,
+        "uptime_pct": 0,
+        "lastSeen": "2026-07-16T14:19:17+02:00",
+        "status": "down"
       }
     },
     {
       "ip": "8.8.8.8",
-      "label": "C  DNS",
+      "label": "Google DNS",
       "last24h": {
+        "samples": 1,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
-        "loss_pct": null,
-        "uptime_pct": null,
-        "samples": 0,
-        "lastSeen": null,
-        "status": "unknown"
+        "loss_pct": 100,
+        "uptime_pct": 0,
+        "lastSeen": "2026-07-16T14:19:17+02:00",
+        "status": "down"
       }
     },
     {
       "ip": "1.1.1.1",
       "label": "Cloudflare DNS",
       "last24h": {
+        "samples": 1,
         "avg_rtt": null,
         "min_rtt": null,
         "max_rtt": null,
-        "loss_pct": null,
-        "uptime_pct": null,
-        "samples": 0,
-        "lastSeen": null,
-        "status": "unknown"
+        "loss_pct": 100,
+        "uptime_pct": 0,
+        "lastSeen": "2026-07-16T14:19:17+02:00",
+        "status": "down"
       }
     }
   ]
