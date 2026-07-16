@@ -28,7 +28,7 @@ pipeline {
     BRANCH      = 'main'
     // Reuse the multibranch GitHub App credential (the one branch indexing uses).
     // Adjust the id here if it differs from what checkout scm is configured with.
-    GIT_CRED_ID = 'ans-forge'
+    GIT_CRED_ID = 'GithubTokenAnsForge'
   }
 
   stages {
