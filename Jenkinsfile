@@ -20,7 +20,7 @@ pipeline {
   options {
     disableConcurrentBuilds()          // skip a tick rather than overlap runs
     skipDefaultCheckout(true)          // never let checkout wipe uncommitted appended data
-    buildDiscarder(logRotator(numToKeepStr: '200'))
+    buildDiscarder(logRotator(numToKeepStr: '10'))
     timeout(time: 5, unit: 'MINUTES')
   }
 
