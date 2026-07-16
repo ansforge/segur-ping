@@ -11,7 +11,7 @@
 // persistent branch workspace. We clone once, then only commit/push at publish.
 
 pipeline {
-  agent { label 'bookwormjdk17' }
+  agent { label 'bookormjdk17persistent' }
 
   triggers { cron('* * * * *') }
 
