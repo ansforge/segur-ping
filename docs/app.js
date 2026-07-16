@@ -16,6 +16,10 @@ function dataUrl(name) { return `${DATA_BASE}/${name}?t=${Date.now()}`; }
 // DSFR-flavoured categorical palette (one colour per target, in config order).
 const PALETTE = ['#000091', '#1D71B8', '#5A7700', '#965A00', '#D20050', '#6A6AF4', '#00A95F', '#8D533E'];
 
+// Latest run of the Pages deploy workflow (api.github.com sends CORS: *, but is
+// rate-limited to 60 req/h per IP for unauthenticated calls — fine on load/refresh).
+const CI_RUNS_URL = 'https://api.github.com/repos/ansforge/segur-ping/actions/workflows/pages.yml/runs?per_page=1';
+
 const RANGE_LABELS = { '24h': 'Dernières 24 heures', '7d': 'Derniers 7 jours', '30d': 'Derniers 30 jours' };
 const AXIS = { grid: '#EEEFF7', line: '#C1C5DC', text: '#898DA5', font: '12px Marianne, sans-serif' };
 
@@ -24,7 +28,10 @@ const state = { index: null, range: '24h', charts: { rtt: null, loss: null }, da
 const $ = (s) => document.querySelector(s);
 
 async function fetchJSON(url) {
-  const r = await fetch(url, { cache: 'no-cache' });
+  // `reload` bypasses the browser HTTP cache entirely and sends `Cache-Control:
+  // no-cache`, which compliant intermediary proxies honour by revalidating with
+  // the origin — needed because some proxies ignore the `?t=` cache-buster.
+  const r = await fetch(url, { cache: 'reload' });
   if (!r.ok) throw new Error(`${url}: ${r.status}`);
   return r.json();
 }
@@ -106,6 +113,34 @@ async function buildSeries() {
 
 // ---- rendering ----------------------------------------------------------
 function targetColor(i) { return PALETTE[i % PALETTE.length]; }
+
+// Reads the last GitHub Actions deploy run and reflects it in the header badge.
+async function renderCiBadge() {
+  const el = $('#ciBadge');
+  if (!el) return;
+  const set = (cls, icon, text, title) => {
+    el.className = `badge ${cls}`;
+    el.innerHTML = `<span class="${icon}" style="font-size:14px;"></span>${text}`;
+    el.title = title;
+  };
+  try {
+    const d = await fetchJSON(`${CI_RUNS_URL}&t=${Date.now()}`);
+    const run = (d.workflow_runs || [])[0];
+    if (!run) throw new Error('aucun run');
+    el.href = run.html_url;
+    const when = relTime(run.updated_at || run.created_at);
+    if (run.status !== 'completed') {
+      set('unknown', 'fr-icon-refresh-line', 'Déploiement en cours', `Déploiement ${run.status} · ${when}`);
+    } else if (run.conclusion === 'success') {
+      set('up', 'fr-icon-checkbox-circle-line', 'Déploiement OK', `Dernier déploiement réussi · ${when}`);
+    } else {
+      set('down', 'fr-icon-error-warning-line', 'Déploiement en échec', `Dernier déploiement : ${run.conclusion} · ${when}`);
+    }
+  } catch (err) {
+    set('unknown', 'fr-icon-information-line', 'Statut indisponible', `Statut CI indisponible : ${err.message}`);
+    console.warn('CI badge', err.message);
+  }
+}
 
 function renderKpis() {
   const targets = state.index.targets || [];
@@ -233,6 +268,7 @@ function wireToggle(groupSel, key) {
 }
 
 async function main() {
+  renderCiBadge(); // independent of the data fetch — fire and forget
   try {
     state.index = await fetchJSON(dataUrl('index.json'));
   } catch (err) {
@@ -245,15 +281,34 @@ async function main() {
     : '—';
   $('#generated').textContent = `Généré le ${gen} · fuseau ${state.index.timezone || 'UTC'}`;
 
-  renderKpis();
-  renderTable();
-  renderLegend();
-  await renderChart();
+  try {
+    renderKpis();
+    renderTable();
+    renderLegend();
+    await renderChart();
+  } catch (err) {
+    $('#chartfoot').textContent = `Erreur de rendu : ${err.message}`;
+    console.error(err);
+  }
 }
 
 // ---- bootstrap ----------------------------------------------------------
 wireToggle('#range', 'range');
-$('#refresh').addEventListener('click', () => { state.dayCache.clear(); main(); });
+$('#refresh').addEventListener('click', async () => {
+  const btn = $('#refresh');
+  const prev = btn.innerHTML;
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.innerHTML = '<span class="fr-icon-refresh-line" style="font-size:14px;"></span>Actualisation…';
+  state.dayCache.clear();
+  try {
+    await main();
+  } finally {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.innerHTML = prev;
+  }
+});
 window.addEventListener('resize', () => { if (state.index) renderChart(); });
 const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
 darkMq.addEventListener('change', () => { if (state.index) renderChart(); });
