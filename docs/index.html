@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>segur-ping — Supervision réseau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marianne:ital,wght@0,300;0,400;0,500;0,700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/[email protected]/dist/utility/icons/icons.min.css">
+<link rel="stylesheet" href="vendor/uPlot.min.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  :root { --mono: var(--ans-font-mono, ui-monospace, Menlo, monospace); }
+  .app { min-height:100vh; background:#FFFFFF; font-family:'Marianne',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#50546D; -webkit-font-smoothing:antialiased; }
+  header.masthead { background:#FFFFFF; box-shadow:0 1px 0 #DDDFF0; }
+  .container { max-width:1248px; margin:0 auto; padding:0 24px; }
+  main { max-width:1248px; margin:0 auto; padding:32px 24px 80px; }
+
+  /* segmented toggles */
+  .seg-group { display:inline-flex; box-shadow:inset 0 0 0 1px #C1C5DC; border-radius:0 16px 16px 16px; overflow:hidden; }
+  .seg { font:inherit; font-weight:500; font-size:14px; border:0; padding:8px 16px; cursor:pointer; background:#FFFFFF; color:#50546D; }
+  .seg.active { background:#1D71B8; color:#FFFFFF; }
+
+  /* cards */
+  .card { border-radius:0 24px 24px 24px; box-shadow:inset 0 0 0 1px #C1C5DC; background:#FFFFFF; }
+  .kpi { border-radius:0 24px 24px 24px; box-shadow:inset 0 0 0 1px #C1C5DC; padding:18px 20px; background:#FFFFFF; }
+  .kpi-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:#6C7089; }
+  .kpi-value { font-size:30px; font-weight:700; color:#343852; line-height:1; }
+  .kpi-unit { font-size:14px; color:#6C7089; }
+  .kpi-note { font-size:12px; color:#6C7089; margin-top:6px; }
+
+  /* table */
+  table.grid { width:100%; border-collapse:collapse; font-size:14px; }
+  table.grid th { background:#F6F7FB; color:#6C7089; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #DDDFF0; white-space:nowrap; padding:12px 14px; }
+  table.grid th.l, table.grid td.l { text-align:left; }
+  table.grid th.r, table.grid td.r { text-align:right; }
+  table.grid td { padding:12px 14px; border-bottom:1px solid #EEEFF7; white-space:nowrap; }
+  table.grid td.num { color:#343852; font-variant-numeric:tabular-nums; }
+  table.grid td.muted { color:#6C7089; }
+  .mono { font-family:var(--mono); font-size:13px; }
+  .badge { display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:0 10px 10px 10px; font-size:12px; font-weight:700; }
+  .badge.up { color:#5A7700; background:#E8F8B9; }
+  .badge.down { color:#FFFFFF; background:#B1001E; }
+  .badge.unknown { color:#50546D; background:#EEEFF7; }
+
+  /* uPlot restyle to DSFR */
+  .uplot .u-legend { font-size:13px; color:#50546D; }
+  .uplot .u-legend .u-marker { border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <div class="container">
+      <div style="display:flex; align-items:stretch; gap:24px; padding:16px 0;">
+        <div style="display:flex; align-items:stretch; gap:16px;">
+          <div style="display:flex; align-items:stretch; font-weight:700; font-size:12px; line-height:1.15; color:#161616; flex-shrink:0;">
+            <div style="display:flex; flex-direction:column; width:34px; margin-right:10px;">
+              <span style="flex:1; background:#000091;"></span>
+              <span style="flex:1; background:#fff;"></span>
+              <span style="flex:1; background:#E1000F;"></span>
+            </div>
+            <div style="display:flex; flex-direction:column; justify-content:center;">
+              <div>RÉPUBLIQUE</div>
+              <div>FRANÇAISE</div>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; justify-content:center; border-left:1px solid #DDDFF0; padding-left:16px;">
+            <span style="font-size:17px; font-weight:700; color:#343852; font-family:var(--mono); letter-spacing:-0.01em;">segur-ping</span>
+            <p style="font-size:13px; color:#6C7089; margin:2px 0 0;">Agence du Numérique en Santé</p>
+          </div>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+          <span style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#6C7089;">
+            <span style="width:8px; height:8px; border-radius:50%; background:#5A7700; box-shadow:0 0 0 3px rgba(90,119,0,0.18);"></span>
+            Sonde active
+          </span>
+          <button id="refresh" style="display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 14px; font-size:14px; font-weight:500; color:#1D71B8; cursor:pointer; background:transparent; border:0; box-shadow:inset 0 0 0 1px #C1C5DC; border-radius:0 16px 16px 16px;">
+            <span class="fr-icon-refresh-line" style="font-size:14px;"></span>Actualiser
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px; margin-bottom:6px;">
+      <h1 style="font-size:32px; font-weight:700; line-height:1.2; color:#343852; margin:0;">Supervision réseau</h1>
+      <span id="generated" style="color:#6C7089; font-size:13px;"></span>
+    </div>
+    <p style="color:#50546D; font-size:16px; margin:0 0 24px; max-width:760px;">Disponibilité et latence des services e-santé supervisés. Cette vue est destinée à un usage d'audit&nbsp;; les mesures brutes sont conservées dans <code style="font-family:var(--mono); font-size:0.9em; background:#F6F7FB; padding:2px 6px; border-radius:4px;">data/AAAA-MM-JJ.json</code>.</p>
+
+    <div id="kpis" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:28px;"></div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:20px; align-items:center;">
+      <div class="seg-group" id="range">
+        <button class="seg active" data-range="24h">24&nbsp;h</button>
+        <button class="seg" data-range="7d">7&nbsp;j</button>
+        <button class="seg" data-range="30d">30&nbsp;j</button>
+      </div>
+      <div class="seg-group" id="metric">
+        <button class="seg active" data-metric="rtt_avg">Latence (ms)</button>
+        <button class="seg" data-metric="loss_pct">Perte (%)</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
+        <h2 id="chartTitle" style="font-size:20px; font-weight:700; color:#343852; margin:0;">Latence aller-retour (RTT)</h2>
+        <span id="chartRangeLabel" style="font-size:12px; color:#6C7089;"></span>
+      </div>
+      <div id="chart"></div>
+      <div id="legend" style="display:flex; flex-wrap:wrap; gap:16px; margin-top:14px;"></div>
+      <div id="chartfoot" style="color:#6C7089; font-size:12px; margin-top:8px;"></div>
+    </div>
+
+    <div class="card" style="overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="l">Cible</th>
+              <th class="l">IP</th>
+              <th class="l">État</th>
+              <th class="r">RTT moy</th>
+              <th class="r">RTT min</th>
+              <th class="r">RTT max</th>
+              <th class="r">Perte&nbsp;%</th>
+              <th class="r">Dispo&nbsp;%</th>
+              <th class="r">Mesures</th>
+              <th class="r">Vu à</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div style="color:#6C7089; font-size:12px; padding:12px 14px; border-top:1px solid #EEEFF7;">Résumé glissant sur 24&nbsp;h. Le tableau présente les agrégats&nbsp;; les mesures brutes sont dans <code style="font-family:var(--mono);">data/AAAA-MM-JJ.json</code>.</div>
+    </div>
+
+  </main>
+</div>
+
+<script src="vendor/uPlot.iife.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

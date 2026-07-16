@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-07-16T11:04:30.271Z",
+  "timezone": "Europe/Paris",
+  "days": [],
+  "targets": [
+    {
+      "ip": "185.24.184.12",
+      "label": "Google DNS",
+      "last24h": {
+        "avg_rtt": null,
+        "min_rtt": null,
+        "max_rtt": null,
+        "loss_pct": null,
+        "uptime_pct": null,
+        "samples": 0,
+        "lastSeen": null,
+        "status": "unknown"
+      }
+    },
+    {
+      "ip": "193.51.208.44",
+      "label": "Cloudflare DNS",
+      "last24h": {
+        "avg_rtt": null,
+        "min_rtt": null,
+        "max_rtt": null,
+        "loss_pct": null,
+        "uptime_pct": null,
+        "samples": 0,
+        "lastSeen": null,
+        "status": "unknown"
+      }
+    },
+    {
+      "ip": "185.24.185.7",
+      "label": "Cloudflare DNS",
+      "last24h": {
+        "avg_rtt": null,
+        "min_rtt": null,
+        "max_rtt": null,
+        "loss_pct": null,
+        "uptime_pct": null,
+        "samples": 0,
+        "lastSeen": null,
+        "status": "unknown"
+      }
+    },
+    {
+      "ip": "8.8.8.8",
+      "label": "Cloudflare DNS",
+      "last24h": {
+        "avg_rtt": null,
+        "min_rtt": null,
+        "max_rtt": null,
+        "loss_pct": null,
+        "uptime_pct": null,
+        "samples": 0,
+        "lastSeen": null,
+        "status": "unknown"
+      }
+    },
+    {
+      "ip": "1.1.1.1",
+      "label": "Cloudflare DNS",
+      "last24h": {
+        "avg_rtt": null,
+        "min_rtt": null,
+        "max_rtt": null,
+        "loss_pct": null,
+        "uptime_pct": null,
+        "samples": 0,
+        "lastSeen": null,
+        "status": "unknown"
+      }
+    }
+  ]
+}

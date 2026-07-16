@@ -1,0 +1,48 @@
+name: Deploy GitHub Pages
+
+# Publishes the docs/ folder to GitHub Pages. Triggered only when docs change
+# (i.e. when the Jenkins job pushes new data every ~2h) or manually. This is the
+# ONLY GitHub Actions workflow in the repo — the expensive per-minute pinging
+# runs on self-hosted Jenkins, not here. ~12 short runs/day (free for public
+# repos; well within the free tier even if private).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch: {}
+
+# Least-privilege permissions required by the Pages deployment action.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deployments at once; the latest push wins.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload docs/ as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
