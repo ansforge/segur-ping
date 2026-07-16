@@ -117,9 +117,9 @@ bord se rafraîchit quant à lui selon la planification Pages toutes les 2 heure
 - Le **workflow Pages ignore `docs/data/**`** et déploie selon une
   **planification de 2 h**, donc les push de données par minute ne déclenchent
   jamais de déploiement → l'usage Actions reste ~12/jour.
-- Les logs de build sont rotés automatiquement (`buildDiscarder`) ; les
+- Les logs de build sont mis en rotation automatiquement (`buildDiscarder`) ; les
   **données d'audit sont dans l'historique git**.
-- La bibliothèque de graphiques (uPlot) est **vendorisée** (fonctionne hors
+- La bibliothèque de graphiques (uPlot) est **indépendante d'Internet** (fonctionne hors
   ligne). Les polices/icônes DSFR se chargent depuis un CDN et se dégradent
   gracieusement vers les polices système si celui-ci est inaccessible.
 
@@ -127,8 +127,7 @@ bord se rafraîchit quant à lui selon la planification Pages toutes les 2 heure
 
 - **Volume de commits** : le push par minute ≈ 1440 commits/jour sur `main`.
   C'est le coût des données en quasi temps réel ; l'historique est la piste
-  d'audit. (Si c'est trop, augmentez l'intervalle du cron ou groupez les
-  commits.)
+  d'audit. 
 - Minute manquée : si une exécution dépasse 60 s, `disableConcurrentBuilds`
   saute le tick suivant (visible comme un trou dans le graphique). Les sondes
   s'exécutent en parallèle pour garder les runs rapides.

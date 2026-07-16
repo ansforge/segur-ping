@@ -102,19 +102,24 @@
         <button class="seg" data-range="7d">7&nbsp;j</button>
         <button class="seg" data-range="30d">30&nbsp;j</button>
       </div>
-      <div class="seg-group" id="metric">
-        <button class="seg active" data-metric="rtt_avg">Latence (ms)</button>
-        <button class="seg" data-metric="loss_pct">Perte (%)</button>
+    </div>
+
+    <div id="legend" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:20px;"></div>
+
+    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
+        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Latence aller-retour (RTT)</h2>
+        <span id="chartRangeLabelRtt" style="font-size:12px; color:#6C7089;"></span>
       </div>
+      <div id="chartRtt"></div>
     </div>
 
     <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
       <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
-        <h2 id="chartTitle" style="font-size:20px; font-weight:700; color:#343852; margin:0;">Latence aller-retour (RTT)</h2>
-        <span id="chartRangeLabel" style="font-size:12px; color:#6C7089;"></span>
+        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Taux de perte de paquets</h2>
+        <span id="chartRangeLabelLoss" style="font-size:12px; color:#6C7089;"></span>
       </div>
-      <div id="chart"></div>
-      <div id="legend" style="display:flex; flex-wrap:wrap; gap:16px; margin-top:14px;"></div>
+      <div id="chartLoss"></div>
       <div id="chartfoot" style="color:#6C7089; font-size:12px; margin-top:8px;"></div>
     </div>
 

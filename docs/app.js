@@ -3,13 +3,23 @@
 // daily JSON files needed for the selected range, then renders KPI cards, a uPlot
 // time-series and the summary table. Fully static — no framework/build step.
 
+// Les fichiers de données (data/*.json) sont poussés dans git chaque minute par
+// Jenkins, mais le site Pages n'est redéployé que toutes les 2 h : il sert donc un
+// snapshot figé, jusqu'à 2 h de retard. Pour que « Actualiser » affiche les mesures
+// quasi-live, on lit les JSON directement depuis le contenu brut de git (dernier
+// commit, cache CDN ~5 min, CORS *) plutôt que depuis le snapshot Pages. Les assets
+// statiques (HTML/CSS/JS) restent servis par Pages. Pour un dev local sur d'autres
+// données, remplacer DATA_BASE par './data'.
+const DATA_BASE = 'https://raw.githubusercontent.com/ansforge/segur-ping/main/docs/data';
+function dataUrl(name) { return `${DATA_BASE}/${name}?t=${Date.now()}`; }
+
 // DSFR-flavoured categorical palette (one colour per target, in config order).
 const PALETTE = ['#000091', '#1D71B8', '#5A7700', '#965A00', '#D20050', '#6A6AF4', '#00A95F', '#8D533E'];
 
 const RANGE_LABELS = { '24h': 'Dernières 24 heures', '7d': 'Derniers 7 jours', '30d': 'Derniers 30 jours' };
 const AXIS = { grid: '#EEEFF7', line: '#C1C5DC', text: '#898DA5', font: '12px Marianne, sans-serif' };
 
-const state = { index: null, range: '24h', metric: 'rtt_avg', chart: null, dayCache: new Map() };
+const state = { index: null, range: '24h', charts: { rtt: null, loss: null }, dayCache: new Map() };
 
 const $ = (s) => document.querySelector(s);
 
@@ -23,7 +33,7 @@ async function loadDay(day) {
   if (state.dayCache.has(day)) return state.dayCache.get(day);
   let data = [];
   try {
-    data = await fetchJSON(`data/${day}.json`);
+    data = await fetchJSON(dataUrl(`${day}.json`));
   } catch (err) {
     console.warn('jour indisponible', day, err.message);
     data = [];
@@ -75,18 +85,23 @@ async function buildSeries() {
   const within = all.filter((r) => new Date(r.ts).getTime() >= cutoff);
 
   const targets = state.index.targets;
-  const perTs = new Map(); // ts(sec) -> { ip: value }
+  const perTs = new Map(); // ts(sec) -> { ip: record }
   for (const rec of within) {
     const x = Math.floor(new Date(rec.ts).getTime() / 1000);
     if (!perTs.has(x)) perTs.set(x, {});
-    perTs.get(x)[rec.ip] = rec[state.metric];
+    perTs.get(x)[rec.ip] = rec;
   }
   const xs = [...perTs.keys()].sort((a, b) => a - b);
-  const series = targets.map((t) => xs.map((x) => {
-    const v = perTs.get(x)[t.ip];
+  const seriesFor = (metric) => targets.map((t) => xs.map((x) => {
+    const rec = perTs.get(x)[t.ip];
+    const v = rec ? rec[metric] : null;
     return v == null ? null : v;
   }));
-  return { data: [xs, ...series], count: within.length };
+  return {
+    count: within.length,
+    rtt: [xs, ...seriesFor('rtt_avg')],
+    loss: [xs, ...seriesFor('loss_pct')],
+  };
 }
 
 // ---- rendering ----------------------------------------------------------
@@ -162,11 +177,10 @@ function renderLegend() {
     </span>`).join('');
 }
 
-function makeChart(data) {
-  const el = $('#chart');
+function makeChart(el, data, metric, store) {
   el.innerHTML = '';
   const width = Math.max(el.clientWidth || 900, 320);
-  const isRtt = state.metric === 'rtt_avg';
+  const isRtt = metric === 'rtt_avg';
   const unit = isRtt ? 'ms' : '%';
 
   const series = [{}].concat((state.index.targets || []).map((t, i) => ({
@@ -193,17 +207,17 @@ function makeChart(data) {
     series,
   };
 
-  if (state.chart) { state.chart.destroy(); state.chart = null; }
+  if (state.charts[store]) { state.charts[store].destroy(); state.charts[store] = null; }
   // eslint-disable-next-line new-cap
-  state.chart = new uPlot(opts, data, el);
+  state.charts[store] = new uPlot(opts, data, el);
 }
 
 async function renderChart() {
-  const isRtt = state.metric === 'rtt_avg';
-  $('#chartTitle').textContent = isRtt ? 'Latence aller-retour (RTT)' : 'Taux de perte de paquets';
-  $('#chartRangeLabel').textContent = RANGE_LABELS[state.range];
-  const { data, count } = await buildSeries();
-  makeChart(data);
+  $('#chartRangeLabelRtt').textContent = RANGE_LABELS[state.range];
+  $('#chartRangeLabelLoss').textContent = RANGE_LABELS[state.range];
+  const { rtt, loss, count } = await buildSeries();
+  makeChart($('#chartRtt'), rtt, 'rtt_avg', 'rtt');
+  makeChart($('#chartLoss'), loss, 'loss_pct', 'loss');
   $('#chartfoot').textContent = `${nf.format(count)} mesures affichées.`;
 }
 
@@ -220,7 +234,7 @@ function wireToggle(groupSel, key) {
 
 async function main() {
   try {
-    state.index = await fetchJSON('data/index.json');
+    state.index = await fetchJSON(dataUrl('index.json'));
   } catch (err) {
     $('#chartfoot').textContent = 'Aucune donnée disponible (data/index.json introuvable).';
     console.error(err);
@@ -239,10 +253,9 @@ async function main() {
 
 // ---- bootstrap ----------------------------------------------------------
 wireToggle('#range', 'range');
-wireToggle('#metric', 'metric');
 $('#refresh').addEventListener('click', () => { state.dayCache.clear(); main(); });
-window.addEventListener('resize', () => { if (state.chart) renderChart(); });
+window.addEventListener('resize', () => { if (state.index) renderChart(); });
 const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
-darkMq.addEventListener('change', () => { if (state.chart) renderChart(); });
+darkMq.addEventListener('change', () => { if (state.index) renderChart(); });
 
 main();
