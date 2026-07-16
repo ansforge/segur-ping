@@ -68,12 +68,15 @@ cd docs && python -m http.server 8080   # open http://localhost:8080
    ```bash
    docker build -t segur-ping:latest .
    ```
-2. **GitHub Pages**: repo *Settings → Pages → Source = **GitHub Actions***.
-   The included workflow `.github/workflows/pages.yml` publishes `docs/` on every
-   push that touches `docs/**` (i.e. each 2h Jenkins publish) or on manual
-   *Run workflow*. This is the only Actions workflow — the per-minute pinging
-   stays on Jenkins, so it does not consume meaningful Actions quota (~12 short
-   runs/day; unlimited for public repos).
+2. **GitHub Pages**: the workflow `.github/workflows/pages.yml` auto-enables
+   Pages (Actions source) on its first run via `configure-pages` with
+   `enablement: true`, then publishes `docs/` on every push touching `docs/**`
+   (each 2h Jenkins publish) or on manual *Run workflow*.
+   - If auto-enable is blocked by org policy, set it by hand once:
+     *Settings → Pages → Source = **GitHub Actions*** and re-run the workflow.
+   - This is the only Actions workflow — the per-minute pinging stays on Jenkins,
+     so it uses no meaningful Actions quota (~12 short runs/day; unlimited for
+     public repos).
 3. **Jenkins credential** `github-segur-ping`: a GitHub Personal Access Token
    (or App token) with `repo` push rights, stored as *username + password*
    (token = password).

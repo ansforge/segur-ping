@@ -37,6 +37,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Auto-enable Pages (Actions source) if it isn't yet, so the first
+          # deploy doesn't fail with "Get Pages site failed / Not Found".
+          enablement: true
 
       - name: Upload docs/ as Pages artifact
         uses: actions/upload-pages-artifact@v3
