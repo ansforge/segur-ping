@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { pingHost } = require('./ping');
+const { measure } = require('./ping');
 
 const ROOT = path.resolve(__dirname, '..');
 const CONFIG_PATH = path.join(ROOT, 'config.json');
@@ -47,7 +47,7 @@ async function main() {
 
   const results = await Promise.all(
     config.targets.map((t) =>
-      pingHost(t.ip, config.packets || 4, config.timeoutSec || 2)
+      measure(t, config)
         .then((r) => ({ ts, date, hour, ip: t.ip, label: t.label, ...r }))
     )
   );
@@ -72,7 +72,18 @@ async function main() {
   atomicWriteJSON(dayFile, arr);
 
   const up = results.filter((r) => r.ok).length;
-  console.log(`[collect] ${ts} - ${results.length} targets, ${up} up -> ${path.basename(dayFile)} (${arr.length} records)`);
+  const method = (config.method || 'icmp').toLowerCase();
+  console.log(`[collect] ${ts} - ${results.length} targets, ${up} up (method=${method}) -> ${path.basename(dayFile)} (${arr.length} records)`);
+
+  // Loud diagnostic: if NOTHING is reachable it's almost always an environment
+  // problem (ICMP blocked/unprivileged, firewall egress), not real downtime.
+  if (up === 0 && results.length > 0) {
+    const sample = results.find((r) => r.err) || results[0];
+    console.warn(`[collect] WARNING: 0/${results.length} targets up. Likely cause: ${sample.err}`);
+    if (method === 'icmp') {
+      console.warn('[collect] If the agent blocks ICMP, set "method": "tcp" (and optional "port") in config.json.');
+    }
+  }
 }
 
 main().catch((e) => { console.error('[collect] error', e); process.exit(1); });

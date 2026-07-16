@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-16T11:04:30.271Z",
+  "generatedAt": "2026-07-16T11:39:01.211Z",
   "timezone": "Europe/Paris",
   "days": [],
   "targets": [
@@ -19,7 +19,7 @@
     },
     {
       "ip": "193.51.208.44",
-      "label": "Cloudflare DNS",
+      "label": "A DNS",
       "last24h": {
         "avg_rtt": null,
         "min_rtt": null,
@@ -33,7 +33,7 @@
     },
     {
       "ip": "185.24.185.7",
-      "label": "Cloudflare DNS",
+      "label": "B DNS",
       "last24h": {
         "avg_rtt": null,
         "min_rtt": null,
@@ -47,7 +47,7 @@
     },
     {
       "ip": "8.8.8.8",
-      "label": "Cloudflare DNS",
+      "label": "C  DNS",
       "last24h": {
         "avg_rtt": null,
         "min_rtt": null,

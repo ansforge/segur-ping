@@ -2,13 +2,15 @@
 // (bookwormjdk17 — has git + Node 18). No Docker: the ping-segur agent has no
 // docker binary, so we run the Node scripts directly on the agent.
 //
-//  - Every minute: ping all targets and append to docs/data/<day>.json (no git).
-//  - Every 2h (or when PUBLISH_NOW=true): rebuild the site manifest, commit,
-//    and push to main so GitHub Pages (Actions workflow) redeploys.
+//  - Every minute: ping all targets, append to docs/data/<day>.json, rebuild the
+//    manifest, then commit + push to main (measurements land in git in near
+//    real time). These commits touch only docs/data/**.
+//  - GitHub Pages is deployed by .github/workflows/pages.yml on a 2h schedule;
+//    it ignores docs/data/** pushes, so the per-minute commits don't redeploy it.
 //
 // Data durability: skipDefaultCheckout(true) means the per-minute build never
-// re-checks-out and thus never wipes the uncommitted appended data in the
-// persistent branch workspace. We clone once, then only commit/push at publish.
+// re-checks-out and thus never wipes uncommitted appended data in the persistent
+// branch workspace. We clone once, then commit/push each run.
 
 pipeline {
   agent { label 'bookormjdk17persistent' }
@@ -20,10 +22,6 @@ pipeline {
     skipDefaultCheckout(true)          // never let checkout wipe uncommitted appended data
     buildDiscarder(logRotator(numToKeepStr: '200'))
     timeout(time: 5, unit: 'MINUTES')
-  }
-
-  parameters {
-    booleanParam(name: 'PUBLISH_NOW', defaultValue: false, description: 'Force a publish on this run')
   }
 
   environment {
@@ -60,12 +58,10 @@ pipeline {
       }
     }
 
-    stage('Publish') {
-      when {
-        expression {
-          return params.PUBLISH_NOW || (sh(script: 'node scripts/is-publish-tick.js', returnStatus: true) == 0)
-        }
-      }
+    // Commit + push EVERY minute so measurements land in git in near real time.
+    // These commits only touch docs/data/**, which the Pages workflow ignores, so
+    // they do NOT trigger a Pages deploy (that runs on a 2h schedule instead).
+    stage('Commit & push') {
       steps {
         withCredentials([gitUsernamePassword(credentialsId: env.GIT_CRED_ID)]) {
           sh '''
@@ -73,10 +69,10 @@ pipeline {
             node scripts/build-site.js
             git add docs/data
             if git diff --cached --quiet; then
-              echo "No data changes to publish"
+              echo "No data changes this run"
               exit 0
             fi
-            git commit -m "data: publish $(date -Iseconds)"
+            git commit -m "data: $(date -Iseconds)"
             git pull --rebase origin "$BRANCH"
             git push origin HEAD:"$BRANCH"
           '''

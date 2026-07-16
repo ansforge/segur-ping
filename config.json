@@ -6,6 +6,8 @@
     { "ip": "8.8.8.8", "label": "C  DNS" },
     { "ip": "1.1.1.1", "label": "Cloudflare DNS" }
   ],
+  "method": "icmp",
+  "port": 443,
   "packets": 4,
   "timeoutSec": 2,
   "publishEveryHours": 2,

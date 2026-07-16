@@ -30,7 +30,6 @@ config.json          targets, packet count, timeout, timezone
 scripts/ping.js      spawn system ping, parse RTT + loss (locale-proof)
 scripts/collect.js   ping all targets, append to today's daily JSON
 scripts/build-site.js  rebuild docs/data/index.json (manifest + summaries)
-scripts/is-publish-tick.js  exit 0 on a 2h publish boundary
 docs/                GitHub Pages root (index.html, app.js, vendor/uPlot.*)
 Jenkinsfile          single minute-cron job on the bookwormjdk17 agent
 Dockerfile           OPTIONAL — local-dev container only; NOT used by Jenkins
@@ -46,14 +45,23 @@ Edit `config.json`:
 ```json
 {
   "targets": [
-    { "ip": "8.8.8.8", "label": "Google DNS" }
+    { "ip": "8.8.8.8", "label": "Google DNS" },
+    { "ip": "10.0.0.5", "label": "Service X", "port": 8443 }
   ],
+  "method": "icmp",
+  "port": 443,
   "packets": 4,
   "timeoutSec": 2,
   "publishEveryHours": 2,
   "timezone": "Europe/Paris"
 }
 ```
+
+- **`method`**: `"icmp"` (system `ping`, needs ICMP privileges/egress) or
+  `"tcp"` (measures the TCP handshake RTT — **no privileges, passes most
+  firewalls**). Use `tcp` on locked-down agents where ICMP is blocked.
+- **`port`**: default TCP port for `tcp` method; override per target with a
+  `"port"` field. Ignored for `icmp`.
 
 ## Run locally (verification)
 
@@ -69,43 +77,47 @@ cd docs && python -m http.server 8080   # open http://localhost:8080
 
 1. **GitHub Pages**: the workflow `.github/workflows/pages.yml` auto-enables
    Pages (Actions source) on its first run via `configure-pages` with
-   `enablement: true`, then publishes `docs/` on every push touching `docs/**`
-   (each 2h Jenkins publish) or on manual *Run workflow*.
+   `enablement: true`. It deploys `docs/` on a **2-hourly schedule**, on manual
+   *Run workflow*, and on pushes that change the site itself — but **not** on the
+   per-minute `docs/data/**` commits (excluded via `!docs/data/**`), so the
+   frequent data pushes never trigger a deploy.
    - If auto-enable is blocked by org policy, set it by hand once:
      *Settings → Pages → Source = **GitHub Actions*** and re-run the workflow.
-   - This is the only Actions workflow — the per-minute pinging stays on Jenkins,
-     so it uses no meaningful Actions quota (~12 short runs/day; unlimited for
-     public repos).
 2. **Jenkins job**: a **multibranch Pipeline** on `ansforge/segur-ping`, script
    path `Jenkinsfile` (already set up as `ANS/Transverse/Forge/ping-segur`).
    - The pipeline pins `agent { label 'bookwormjdk17' }` (git + Node 18 + ping).
-   - It reuses the multibranch **GitHub App credential** for the publish push.
+   - It reuses the multibranch **GitHub App credential** for the push.
      The id is set at the top of the `Jenkinsfile` as `GIT_CRED_ID = 'ans-forge'`
      — change it there if branch indexing uses a different credential id.
    - No Docker and no extra secret required.
 
-The `cron('* * * * *')` trigger inside the Jenkinsfile drives it from there.
-Trigger a build manually with **PUBLISH_NOW = true** to force an immediate
-publish.
+The `cron('* * * * *')` trigger inside the Jenkinsfile drives it: every minute it
+pings, appends to the daily JSON, commits and pushes. The dashboard itself
+refreshes on the 2-hourly Pages schedule.
 
-> **ICMP note:** the scripts use the agent's `ping` binary. Debian bookworm
-> normally allows unprivileged ping (`net.ipv4.ping_group_range`). If every
-> target reports `down` with 100% loss, the agent is blocking ICMP for the
-> jenkins user — grant it or run ping via a wrapper.
+> **If every target shows `down` / 100% loss** (as on a locked-down agent), ICMP
+> is blocked for the jenkins user (privileges or firewall egress). Either grant
+> unprivileged ping (`net.ipv4.ping_group_range` / `setcap` on the ping binary),
+> or set **`"method": "tcp"`** in `config.json` — TCP handshake probing needs no
+> privileges and passes most firewalls. The collector logs the exact reason when
+> nothing is reachable.
 
 ## How it stays cheap & clean
 
-- One JSON append per minute on disk (persisted workspace) — **no commit spam**.
-- Git commit + push only every 2 hours → ~12 commits/day.
-- Build logs auto-rotate (`buildDiscarder`); the **audit data is in git history**,
-  untouched.
+- Data is committed + pushed **every minute** (near-real-time audit trail), but
+  those commits only touch `docs/data/**`.
+- The Pages **workflow ignores `docs/data/**`** and deploys on a **2h schedule**,
+  so per-minute data pushes never trigger a deploy → Actions usage stays ~12/day.
+- Build logs auto-rotate (`buildDiscarder`); the **audit data is in git history**.
 - Chart library (uPlot) is **vendored** (works offline). The DSFR fonts/icons
   load from a CDN and degrade gracefully to system fonts if unreachable.
 
 ## Notes / limits
 
+- **Commit volume**: per-minute pushing ≈ 1440 commits/day on `main`. That's the
+  cost of near-real-time data; the history is the audit trail. (If that's too
+  much, raise the cron interval or batch commits.)
 - Missed minute: if a run exceeds 60s, `disableConcurrentBuilds` skips the next
-  tick (visible as a gap in the chart). Pings run in parallel to keep runs fast.
-- Code changes to `scripts/`/`docs/` land in the running clone at the next
-  publish (`git pull --rebase`); the `Jenkinsfile` itself refreshes every build.
-- Data-at-risk if the Jenkins host dies = up to one publish window (~2h).
+  tick (visible as a gap in the chart). Probes run in parallel to keep runs fast.
+- The dashboard reflects data as of the last 2-hourly Pages deploy, even though
+  the underlying data in git is minute-fresh.

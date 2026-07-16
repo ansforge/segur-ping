@@ -7,10 +7,17 @@ name: Deploy GitHub Pages
 # repos; well within the free tier even if private).
 
 on:
+  # Deploy on a 2-hourly schedule. Jenkins pushes measurement data to
+  # docs/data/** every minute; those pushes are intentionally excluded below so
+  # they don't trigger a deploy each minute (which would burn Actions runs).
+  schedule:
+    - cron: '0 */2 * * *'
+  # Design/code changes to the site (but NOT the per-minute data) deploy on push.
   push:
     branches: [main]
     paths:
       - 'docs/**'
+      - '!docs/data/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch: {}
 
