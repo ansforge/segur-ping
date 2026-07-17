@@ -58,9 +58,14 @@ pipeline {
             }
             sh '''
               set -e
-              git checkout -B "$BRANCH"
               git config user.email "michael.faurel@esante.gouv.fr"
               git config user.name  "segur-ping bot"
+              # Always resync to origin before running: the Collect stage below can
+              # fail before the Commit & push stage's `git pull` ever runs, so without
+              # this the persistent workspace can get stuck forever on a stale commit
+              # (e.g. missing a script added on main) with no way to self-heal.
+              git fetch origin "$BRANCH"
+              git checkout -B "$BRANCH" "origin/$BRANCH"
               node --version
             '''
           }
