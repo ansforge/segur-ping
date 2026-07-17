@@ -4,10 +4,7 @@
   "concurrency": 50,
   "followRedirects": false,
   "urls": [
-    { "url": "https://208.67.222.222", "label": "OpenDNS" },
-    { "url": "https://1.0.0.1", "label": "Cloudflare DNS 2" },
-    { "url": "https://8.8.4.4", "label": "Google DNS 2" },
-    { "url": "https://8.8.8.8", "label": "Google DNS" },
-    { "url": "https://1.1.1.1", "label": "Cloudflare DNS" }
+    { "url": "https://db157.test.mesimagesmedicales.fr/healthcheck/drimbox", "label": "Drimbox healthcheck (HTTPS)" },
+    { "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/drimbox", "label": "Drimbox healthcheck (HTTP)" }
   ]
 }

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marianne:ital,wght@0,300;0,400;0,500;0,700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/[email protected]/dist/utility/icons/icons.min.css">
+<link rel="stylesheet" href="vendor/uPlot.min.css">
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; }
@@ -44,6 +45,21 @@
   .badge.down { color:#FFFFFF; background:#B1001E; }
   .badge.unknown { color:#50546D; background:#EEEFF7; }
   .badge.warn { color:#965A00; background:#FCE7C3; }
+
+  /* per-check chips (healthcheck sub-statuses) */
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:0 8px 8px 8px; font-size:11px; font-weight:600; white-space:nowrap; }
+  .chip::before { content:''; width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .chip.up { color:#5A7700; background:#E8F8B9; }
+  .chip.up::before { background:#5A7700; }
+  .chip.down { color:#B1001E; background:#FDE2E7; }
+  .chip.down::before { background:#B1001E; }
+  .chip.unknown { color:#50546D; background:#EEEFF7; }
+  .chip.unknown::before { background:#9296AE; }
+
+  /* uPlot restyle to DSFR */
+  .uplot .u-legend { font-size:13px; color:#50546D; }
+  .uplot .u-legend .u-marker { border-radius:2px; }
 </style>
 </head>
 <body>
@@ -96,7 +112,38 @@
         <label class="field-label" for="domain">Domaine</label>
         <select id="domain" class="ans"></select>
       </div>
+      <div class="field">
+        <label class="field-label" for="range">Période</label>
+        <select id="range" class="ans">
+          <option value="24h">24 heures</option>
+          <option value="7d">7 jours</option>
+          <option value="30d">30 jours</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="chartUrl">URL (détail des checks)</label>
+        <select id="chartUrl" class="ans"></select>
+      </div>
       <span id="filterCount" style="font-size:13px; color:#6C7089; padding-bottom:9px;"></span>
+    </div>
+
+    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
+        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Temps de réponse (ms)</h2>
+        <span id="rangeLabelMs" style="font-size:12px; color:#6C7089;"></span>
+      </div>
+      <div id="chartMs"></div>
+      <div id="legendMs" style="display:flex; flex-wrap:wrap; gap:16px; margin-top:12px;"></div>
+    </div>
+
+    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:8px;">
+        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Disponibilité des checks au cours du temps</h2>
+        <span id="chartChecksLabel" style="font-size:12px; color:#6C7089;"></span>
+      </div>
+      <div id="chartChecks"></div>
+      <div id="legendChecks" style="display:flex; flex-wrap:wrap; gap:16px; margin-top:12px;"></div>
+      <div id="chartfoot" style="color:#6C7089; font-size:12px; margin-top:8px;"></div>
     </div>
 
     <div class="card" style="overflow:hidden;">
@@ -109,6 +156,7 @@
               <th class="l">Domaine</th>
               <th class="l">État</th>
               <th class="r">Code</th>
+              <th class="l">Détail des checks</th>
               <th class="r">Temps</th>
               <th class="r">Vu à</th>
             </tr>
@@ -122,6 +170,7 @@
   </main>
 </div>
 
+<script src="vendor/uPlot.iife.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

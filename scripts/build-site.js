@@ -17,6 +17,16 @@ function readRec(id) {
   catch (_) { return null; }
 }
 
+// Daily history files (docs/data/YYYY-MM-DD.json) the frontend can load to plot
+// values over time.
+function listDays() {
+  if (!fs.existsSync(DATA_DIR)) return [];
+  return fs.readdirSync(DATA_DIR)
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
+    .map((f) => f.replace('.json', ''))
+    .sort();
+}
+
 function main() {
   const cfg = loadConfig();
 
@@ -31,22 +41,26 @@ function main() {
       ms: rec.ms != null ? rec.ms : null,
       ok: rec.ok != null ? rec.ok : null,
       err: rec.err != null ? rec.err : null,
+      health: rec.health != null ? rec.health : null,
+      checks: rec.checks != null ? rec.checks : null,
       ts: rec.ts || null,
     };
   });
 
   const domains = [...new Set(urls.map((u) => u.domain))].sort((a, b) => a.localeCompare(b, 'fr'));
 
+  const days = listDays();
   const index = {
     generatedAt: new Date().toISOString(),
     timezone: cfg.timezone,
     domains,
+    days,
     urls,
   };
 
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, 'index.json'), JSON.stringify(index, null, 2));
-  console.log(`[build-site] index.json written: ${urls.length} urls, ${domains.length} domains`);
+  console.log(`[build-site] index.json written: ${urls.length} urls, ${domains.length} domains, ${days.length} days`);
 }
 
 main();
