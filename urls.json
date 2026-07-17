@@ -5,6 +5,7 @@
   "followRedirects": false,
   "urls": [
     { "url": "https://db157.test.mesimagesmedicales.fr/healthcheck/drimbox", "label": "Drimbox healthcheck (HTTPS)" },
-    { "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/drimbox", "label": "Drimbox healthcheck (HTTP)" }
+    { "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/drimbox", "label": "Drimbox healthcheck (HTTP)" },
+    { "url": "https://vi175.test.mesimagesmedicales.fr/healthcheck", "label": "vi175 healthcheck (HTTPS)" }
   ]
 }

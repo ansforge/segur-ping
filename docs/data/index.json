@@ -2,7 +2,8 @@
   "generatedAt": "2026-07-16T15:50:26.079Z",
   "timezone": "Europe/Paris",
   "domains": [
-    "db157.test.mesimagesmedicales.fr"
+    "db157.test.mesimagesmedicales.fr",
+    "vi175.test.mesimagesmedicales.fr"
   ],
   "days": [],
   "urls": [
@@ -24,6 +25,19 @@
       "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/drimbox",
       "label": "Drimbox healthcheck (HTTP)",
       "domain": "db157.test.mesimagesmedicales.fr",
+      "http_code": null,
+      "ms": null,
+      "ok": null,
+      "err": null,
+      "health": null,
+      "checks": null,
+      "ts": null
+    },
+    {
+      "id": "vi175.test.mesimagesmedicales.fr-e6b738a3",
+      "url": "https://vi175.test.mesimagesmedicales.fr/healthcheck",
+      "label": "vi175 healthcheck (HTTPS)",
+      "domain": "vi175.test.mesimagesmedicales.fr",
       "http_code": null,
       "ms": null,
       "ok": null,
