@@ -22,7 +22,7 @@
     },
     {
       "id": "db157.test.mesimagesmedicales.fr-9f28399b",
-      "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/drimbox",
+      "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/pacs",
       "label": "Drimbox healthcheck (HTTP)",
       "domain": "db157.test.mesimagesmedicales.fr",
       "http_code": null,
