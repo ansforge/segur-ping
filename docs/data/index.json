@@ -1,50 +1,57 @@
 {
-  "generatedAt": "2026-07-16T15:50:26.079Z",
+  "generatedAt": "2026-07-17T23:24:28.397Z",
   "timezone": "Europe/Paris",
   "domains": [
     "db157.test.mesimagesmedicales.fr",
     "vi175.test.mesimagesmedicales.fr"
   ],
-  "days": [],
+  "days": [
+    "2026-07-17",
+    "2026-07-18"
+  ],
   "urls": [
     {
       "id": "db157.test.mesimagesmedicales.fr-70d2124b",
       "url": "https://db157.test.mesimagesmedicales.fr/healthcheck/drimbox",
       "label": "Drimbox healthcheck (HTTPS)",
       "domain": "db157.test.mesimagesmedicales.fr",
-      "http_code": null,
-      "ms": null,
-      "ok": null,
+      "http_code": 200,
+      "ms": 511,
+      "ok": true,
       "err": null,
-      "health": null,
-      "checks": null,
-      "ts": null
+      "health": "DOWN",
+      "checks": {
+        "LISTEBLANCHE": "DOWN",
+        "WADO-RS": "UP",
+        "VISIONNEUSE": "UP"
+      },
+      "ts": "2026-07-18T01:24:27+02:00"
     },
     {
       "id": "db157.test.mesimagesmedicales.fr-9f28399b",
       "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/pacs",
       "label": "Drimbox healthcheck (HTTP)",
       "domain": "db157.test.mesimagesmedicales.fr",
-      "http_code": null,
-      "ms": null,
-      "ok": null,
+      "http_code": 301,
+      "ms": 67,
+      "ok": true,
       "err": null,
       "health": null,
       "checks": null,
-      "ts": null
+      "ts": "2026-07-18T01:24:27+02:00"
     },
     {
       "id": "vi175.test.mesimagesmedicales.fr-e6b738a3",
       "url": "https://vi175.test.mesimagesmedicales.fr/healthcheck",
       "label": "vi175 healthcheck (HTTPS)",
       "domain": "vi175.test.mesimagesmedicales.fr",
-      "http_code": null,
-      "ms": null,
-      "ok": null,
+      "http_code": 200,
+      "ms": 220,
+      "ok": true,
       "err": null,
       "health": null,
       "checks": null,
-      "ts": null
+      "ts": "2026-07-18T01:24:27+02:00"
     }
   ]
 }
