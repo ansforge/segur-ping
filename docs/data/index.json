@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T22:09:10.591Z",
+  "generatedAt": "2026-07-23T22:10:11.378Z",
   "timezone": "Europe/Paris",
   "domains": [
     "db157.test.mesimagesmedicales.fr",
@@ -16,7 +16,7 @@
       "label": "Drimbox healthcheck (HTTPS)",
       "domain": "db157.test.mesimagesmedicales.fr",
       "http_code": 200,
-      "ms": 255,
+      "ms": 270,
       "ok": true,
       "err": null,
       "health": "DOWN",
@@ -25,7 +25,7 @@
         "WADO-RS": "UP",
         "VISIONNEUSE": "UP"
       },
-      "ts": "2026-07-24T00:09:10+02:00"
+      "ts": "2026-07-24T00:10:10+02:00"
     },
     {
       "id": "db157.test.mesimagesmedicales.fr-9f28399b",
@@ -33,12 +33,12 @@
       "label": "Drimbox healthcheck (HTTP)",
       "domain": "db157.test.mesimagesmedicales.fr",
       "http_code": 301,
-      "ms": 16,
+      "ms": 23,
       "ok": true,
       "err": null,
       "health": null,
       "checks": null,
-      "ts": "2026-07-24T00:09:10+02:00"
+      "ts": "2026-07-24T00:10:10+02:00"
     },
     {
       "id": "vi175.test.mesimagesmedicales.fr-e6b738a3",
@@ -46,12 +46,12 @@
       "label": "vi175 healthcheck (HTTPS)",
       "domain": "vi175.test.mesimagesmedicales.fr",
       "http_code": 200,
-      "ms": 82,
+      "ms": 118,
       "ok": true,
       "err": null,
       "health": null,
       "checks": null,
-      "ts": "2026-07-24T00:09:10+02:00"
+      "ts": "2026-07-24T00:10:10+02:00"
     }
   ]
 }
