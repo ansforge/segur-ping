@@ -42,7 +42,7 @@ pipeline {
     // real work runs as nested stages, which share this stage's agent + workspace
     // (required so the in-progress daily JSON survives between them).
     stage('Run on agent') {
-      agent { label 'bookormjdk17' }
+      agent { label 'bookwormjdk17' }
       options { timeout(time: 3, unit: 'MINUTES') }
 
       stages {
