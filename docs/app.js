@@ -295,7 +295,7 @@ function populateDomains() {
 
 function populateChartUrls() {
   const sel = $('#chartUrl');
-  const urls = state.index.urls || [];
+  const urls = (state.index.urls || []).filter(inDomain);
   sel.innerHTML = urls.map((u) => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.label || u.url)}</option>`).join('');
   if (!urls.find((u) => u.id === state.chartUrlId)) state.chartUrlId = urls[0] ? urls[0].id : null;
   if (state.chartUrlId) sel.value = state.chartUrlId;
@@ -357,7 +357,7 @@ async function main() {
 }
 
 // ---- bootstrap ----------------------------------------------------------
-$('#domain').addEventListener('change', (e) => { state.domain = e.target.value; renderTable(); renderCharts(); });
+$('#domain').addEventListener('change', (e) => { state.domain = e.target.value; renderTable(); populateChartUrls(); renderCharts(); });
 $('#range').addEventListener('change', (e) => { state.range = e.target.value; renderCharts(); });
 $('#chartUrl').addEventListener('change', (e) => { state.chartUrlId = e.target.value; renderCharts(); });
 $('#refresh').addEventListener('click', async () => {
