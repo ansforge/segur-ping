@@ -385,10 +385,27 @@ function populateDomains() {
   sel.value = state.domain;
 }
 
+// Rebuilds the "URL (détail des checks)" dropdown straight from state.index.urls
+// (itself reloaded from data/index.json on every load/refresh), so it always
+// reflects whatever is currently configured in urls.json — new URLs or domains
+// show up with no code change. Sorted by label, and grouped by domain via
+// <optgroup> when "Tous les domaines" is selected, so the list stays readable
+// as more domains/URLs get added over time.
 function populateChartUrls() {
   const sel = $('#chartUrl');
   const urls = (state.index.urls || []).filter(inDomain);
-  sel.innerHTML = urls.map((u) => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.label || u.url)}</option>`).join('');
+  const byLabel = (a, b) => (a.label || a.url).localeCompare(b.label || b.url, 'fr');
+  const option = (u) => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.label || u.url)}</option>`;
+
+  if (state.domain === 'all') {
+    sel.innerHTML = (state.index.domains || []).map((d) => {
+      const group = urls.filter((u) => u.domain === d).sort(byLabel);
+      return group.length ? `<optgroup label="${escapeHtml(d)}">${group.map(option).join('')}</optgroup>` : '';
+    }).join('');
+  } else {
+    sel.innerHTML = [...urls].sort(byLabel).map(option).join('');
+  }
+
   if (!urls.find((u) => u.id === state.chartUrlId)) state.chartUrlId = urls[0] ? urls[0].id : null;
   if (state.chartUrlId) sel.value = state.chartUrlId;
 }
