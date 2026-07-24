@@ -143,7 +143,16 @@
       </div>
       <div id="chartChecks"></div>
       <div id="legendChecks" style="display:flex; flex-wrap:wrap; gap:16px; margin-top:12px;"></div>
+      <p style="color:#6C7089; font-size:12px; margin:6px 0 0;">Bande du haut = UP, bande du bas = DOWN. Les checks actifs en même temps dans le même état sont légèrement décalés pour rester distincts.</p>
       <div id="chartfoot" style="color:#6C7089; font-size:12px; margin-top:8px;"></div>
+    </div>
+
+    <div class="card" style="padding:20px 22px; margin-bottom:24px; overflow:hidden;">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:14px;">
+        <h2 style="font-size:20px; font-weight:700; color:#343852; margin:0;">Indicateurs sur la sélection</h2>
+        <span id="filteredKpisLabel" style="font-size:12px; color:#6C7089;"></span>
+      </div>
+      <div id="filteredKpis" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px;"></div>
     </div>
 
     <div class="card" style="overflow:hidden;">

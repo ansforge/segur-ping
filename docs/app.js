@@ -127,9 +127,10 @@ async function historyRows() {
 const inDomain = (u) => state.domain === 'all' || u.domain === state.domain;
 const toBin = (v) => (v == null ? null : (String(v).toUpperCase() === 'UP' ? 1 : 0));
 
-// Response-time dataset: one line per URL of the current domain filter.
-function msDataset(rows) {
-  const urls = (state.index.urls || []).filter(inDomain);
+// Response-time dataset: one line per URL of the current domain filter, further
+// narrowed to the single URL selected in "détail des checks" when one is picked.
+function msDataset(rows, urlId) {
+  const urls = (state.index.urls || []).filter(inDomain).filter((u) => !urlId || u.id === urlId);
   const ids = new Set(urls.map((u) => u.id));
   const perTs = new Map();
   for (const r of rows) {
@@ -155,6 +156,60 @@ function checksDataset(rows, urlId) {
   const globalSeries = mine.map((r) => toBin(r.health));
   const checkSeries = names.map((n) => mine.map((r) => (r.checks ? toBin(r.checks[n]) : null)));
   return { data: [xs, globalSeries, ...checkSeries], labels: ['Global', ...names] };
+}
+
+// ---- filtered KPIs (domaine / période / URL) ------------------------------
+// Same subset of rows as the two charts above (history rows for the selected
+// URL, already narrowed to the current range). bucketOf() reuses the same
+// UP/problem/down classification as the status table, so numbers stay coherent
+// across the whole page.
+function filteredStats(rows, urlId) {
+  const mine = rows.filter((r) => r.id === urlId);
+  const withMs = mine.map((r) => r.ms).filter((v) => v != null).sort((a, b) => a - b);
+  const meanMs = withMs.length ? withMs.reduce((a, b) => a + b, 0) / withMs.length : null;
+  const p95Ms = withMs.length ? withMs[Math.min(withMs.length - 1, Math.floor(0.95 * withMs.length))] : null;
+  const maxMs = withMs.length ? withMs[withMs.length - 1] : null;
+
+  const buckets = mine.map(bucketOf).filter((b) => b !== 'unknown');
+  const upCount = buckets.filter((b) => b === 'ok').length;
+  const upPct = buckets.length ? (upCount / buckets.length) * 100 : null;
+  const downPct = buckets.length ? 100 - upPct : null;
+
+  // Count UP -> not-UP transitions as distinct incidents (a long outage counts
+  // once, not once per sample), so this complements the raw DOWN percentage.
+  let incidents = 0;
+  for (let i = 1; i < buckets.length; i++) {
+    if (buckets[i - 1] === 'ok' && buckets[i] !== 'ok') incidents++;
+  }
+
+  return { count: mine.length, measured: buckets.length, meanMs, p95Ms, maxMs, upPct, downPct, incidents };
+}
+
+function renderFilteredKpis(rows) {
+  const urlId = state.chartUrlId;
+  const u = (state.index.urls || []).find((x) => x.id === urlId);
+  $('#filteredKpisLabel').textContent = u ? `${u.label || u.url} · ${RANGE_LABELS[state.range]}` : '';
+
+  const fmtMs = (v) => (v == null ? '—' : `${nf.format(Math.round(v))} ms`);
+  const fmtPct = (v) => (v == null ? '—' : `${v.toFixed(1).replace('.', ',')} %`);
+
+  const s = filteredStats(rows, urlId);
+  const cards = [
+    { label: 'Temps de réponse moyen', value: fmtMs(s.meanMs), note: `sur ${nf.format(s.count)} mesure(s)` },
+    { label: 'Temps de réponse p95', value: fmtMs(s.p95Ms), note: `max observé : ${fmtMs(s.maxMs)}` },
+    { label: 'Disponibilité (UP)', value: fmtPct(s.upPct), note: `${nf.format(s.measured)} mesure(s) exploitable(s)` },
+    { label: 'Indisponibilité (DOWN)', value: fmtPct(s.downPct), note: 'santé DOWN / 4xx-5xx / injoignable' },
+    { label: 'Incidents', value: nf.format(s.incidents), note: 'passages UP → DOWN sur la période' },
+  ];
+
+  $('#filteredKpis').innerHTML = cards.map((k) => `
+    <div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div style="display:flex; align-items:baseline; gap:6px; margin-top:8px;">
+        <span class="kpi-value" style="font-size:24px;">${k.value}</span>
+      </div>
+      <div class="kpi-note">${k.note}</div>
+    </div>`).join('');
 }
 
 // ---- chart rendering -----------------------------------------------------
@@ -188,27 +243,62 @@ function makeMsChart(el, data, urls) {
   renderLegend('#legendMs', urls.map((u, i) => ({ label: u.label || u.url, color: targetColor(i) })));
 }
 
+// Only two states exist (UP / DOWN), so the chart is split into exactly two bands:
+// the top half for UP, the bottom half for DOWN, with a visible gap between them.
+// When several checks share the same state at the same instant, each series still
+// gets a tiny, fixed offset *within* its band so the lines don't fully overlap —
+// but which band a line sits in is always what tells you its state.
+const UP_BAND = [0.58, 0.98];
+const DOWN_BAND = [0.02, 0.42];
+const BAND_MID = (UP_BAND[0] + DOWN_BAND[1]) / 2; // 0.5 — separates the two bands
+
 function makeChecksChart(el, data, labels) {
   el.innerHTML = '';
   const width = Math.max(el.clientWidth || 900, 320);
+  const n = labels.length;
+  const xs = data[0];
+  const offsetFor = (i) => (n > 1 ? (i + 0.5) / n : 0.5);
+  const bandData = [xs, ...data.slice(1).map((series, i) => {
+    const frac = offsetFor(i);
+    const upV = UP_BAND[0] + frac * (UP_BAND[1] - UP_BAND[0]);
+    const downV = DOWN_BAND[0] + frac * (DOWN_BAND[1] - DOWN_BAND[0]);
+    return series.map((v) => (v == null ? null : (v === 1 ? upV : downV)));
+  })];
   // eslint-disable-next-line new-cap
   const stepped = uPlot.paths.stepped({ align: 1 });
   const series = [{}].concat(labels.map((lab, i) => ({
     label: lab, stroke: targetColor(i), width: 2, spanGaps: false, points: { show: false },
-    paths: stepped, value: (up, v) => (v == null ? '—' : (v === 1 ? 'UP' : 'DOWN')),
+    paths: stepped,
+    value: (u, v) => (v == null ? '—' : (v > BAND_MID ? 'UP' : 'DOWN')),
   })));
+  const bandCenters = [(UP_BAND[0] + UP_BAND[1]) / 2, (DOWN_BAND[0] + DOWN_BAND[1]) / 2];
   const opts = {
     width, height: 260, legend: { show: false },
-    scales: { x: { time: true }, y: { range: [-0.15, 1.15] } },
+    scales: { x: { time: true }, y: { range: [0, 1] } },
     axes: [
       axisX(),
-      { ...axisY(''), splits: () => [0, 1], values: (u, vals) => vals.map((v) => (v === 1 ? 'UP' : (v === 0 ? 'DOWN' : ''))) },
+      { ...axisY(''), splits: () => bandCenters, values: (u, vals) => vals.map((v) => (v > BAND_MID ? 'UP' : 'DOWN')) },
     ],
     series,
+    hooks: {
+      // Draw a single separator through the gap between the UP and DOWN bands.
+      draw: [(u) => {
+        const { ctx } = u;
+        ctx.save();
+        ctx.strokeStyle = AXIS.grid;
+        ctx.lineWidth = 1;
+        const y = Math.round(u.valToPos(BAND_MID, 'y', true)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(u.bbox.left, y);
+        ctx.lineTo(u.bbox.left + u.bbox.width, y);
+        ctx.stroke();
+        ctx.restore();
+      }],
+    },
   };
   if (state.charts.checks) state.charts.checks.destroy();
   // eslint-disable-next-line new-cap
-  state.charts.checks = new uPlot(opts, data, el);
+  state.charts.checks = new uPlot(opts, bandData, el);
   renderLegend('#legendChecks', labels.map((lab, i) => ({ label: lab, color: targetColor(i) })));
 }
 
@@ -216,13 +306,15 @@ async function renderCharts() {
   $('#rangeLabelMs').textContent = RANGE_LABELS[state.range];
   const rows = await historyRows();
 
-  const ms = msDataset(rows);
+  const ms = msDataset(rows, state.chartUrlId);
   makeMsChart($('#chartMs'), ms.data, ms.urls);
 
   const u = (state.index.urls || []).find((x) => x.id === state.chartUrlId);
   $('#chartChecksLabel').textContent = u ? (u.label || u.url) : '';
   const ck = checksDataset(rows, state.chartUrlId);
   makeChecksChart($('#chartChecks'), ck.data, ck.labels);
+
+  renderFilteredKpis(rows);
 
   $('#chartfoot').textContent = `${nf.format(rows.length)} mesures sur la période · ${RANGE_LABELS[state.range]}.`;
 }
