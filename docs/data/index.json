@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-07-24T07:41:11.191Z",
+  "generatedAt": "2026-07-24T07:42:11.442Z",
   "timezone": "Europe/Paris",
   "domains": [
     "db157.test.mesimagesmedicales.fr",
-    "vi175.test.mesimagesmedicales.fr"
+    "vi157.test.mesimagesmedicales.fr"
   ],
   "days": [
     "2026-07-23",
@@ -16,7 +16,7 @@
       "label": "Drimbox healthcheck (HTTPS)",
       "domain": "db157.test.mesimagesmedicales.fr",
       "http_code": 200,
-      "ms": 223,
+      "ms": 248,
       "ok": true,
       "err": null,
       "health": "DOWN",
@@ -25,33 +25,33 @@
         "WADO-RS": "UP",
         "VISIONNEUSE": "UP"
       },
-      "ts": "2026-07-24T09:41:10+02:00"
+      "ts": "2026-07-24T09:42:10+02:00"
     },
     {
-      "id": "db157.test.mesimagesmedicales.fr-9f28399b",
-      "url": "http://db157.test.mesimagesmedicales.fr/healthcheck/drimbox",
-      "label": "Drimbox healthcheck (HTTP)",
-      "domain": "db157.test.mesimagesmedicales.fr",
-      "http_code": 301,
-      "ms": 38,
-      "ok": true,
-      "err": null,
+      "id": "vi157.test.mesimagesmedicales.fr-901c1482",
+      "url": "https://vi157.test.mesimagesmedicales.fr/healthcheck/drimbox",
+      "label": "vi175 healthcheck Drimbox (HTTP)",
+      "domain": "vi157.test.mesimagesmedicales.fr",
+      "http_code": null,
+      "ms": null,
+      "ok": false,
+      "err": "how to fix it, please visit the webpage mentioned above.",
       "health": null,
       "checks": null,
-      "ts": "2026-07-24T09:41:10+02:00"
+      "ts": "2026-07-24T09:42:10+02:00"
     },
     {
-      "id": "vi175.test.mesimagesmedicales.fr-e6b738a3",
-      "url": "https://vi175.test.mesimagesmedicales.fr/healthcheck",
-      "label": "vi175 healthcheck (HTTPS)",
-      "domain": "vi175.test.mesimagesmedicales.fr",
-      "http_code": 200,
-      "ms": 96,
-      "ok": true,
-      "err": null,
+      "id": "vi157.test.mesimagesmedicales.fr-72c000ea",
+      "url": "https://vi157.test.mesimagesmedicales.fr/healthcheck/pacs",
+      "label": "vi175 healthcheck PACS (HTTPS)",
+      "domain": "vi157.test.mesimagesmedicales.fr",
+      "http_code": null,
+      "ms": null,
+      "ok": false,
+      "err": "how to fix it, please visit the webpage mentioned above.",
       "health": null,
       "checks": null,
-      "ts": "2026-07-24T09:41:10+02:00"
+      "ts": "2026-07-24T09:42:10+02:00"
     }
   ]
 }
